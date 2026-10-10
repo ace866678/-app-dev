@@ -22,6 +22,9 @@ import {
   Send,
   RefreshCw,
   MapPin,
+  FileDown,
+  GripVertical,
+  Search,
 } from 'lucide-react';
 type W = {
   id: string;
@@ -62,6 +65,7 @@ type ChatMessage = {
   senderId: string;
   senderName: string;
   text: string;
+  topic: string;
   createdAt: string;
 };
 const template = [
@@ -134,6 +138,78 @@ const deadlineLabel = (s?: string) => {
   if (days === 1) return 'Due tomorrow';
   return `Due in ${days} days`;
 };
+const CHAT_TOPICS = ['General', 'Chapter 1', 'Chapter 2', 'Literature Review', 'Methodology', 'Meetings & Planning'];
+const xmlEscape = (value: string) => value
+  .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const zipCrc32 = (bytes: Uint8Array) => {
+  let crc = 0xffffffff;
+  for (let i = 0; i < bytes.length; i++) {
+    crc ^= bytes[i];
+    for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+};
+const zipStoredFiles = (files: { name: string; content: string }[]) => {
+  const encoder = new TextEncoder();
+  const localParts: Uint8Array[] = [];
+  const centralParts: Uint8Array[] = [];
+  let localOffset = 0;
+  let centralSize = 0;
+  const dosDate = ((2024 - 1980) << 9) | (1 << 5) | 1;
+  for (const file of files) {
+    const name = encoder.encode(file.name);
+    const data = encoder.encode(file.content);
+    const crc = zipCrc32(data);
+    const local = new Uint8Array(30 + name.length);
+    const lv = new DataView(local.buffer);
+    lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true); lv.setUint16(6, 0, true);
+    lv.setUint16(8, 0, true); lv.setUint16(10, 0, true); lv.setUint16(12, dosDate, true);
+    lv.setUint32(14, crc, true); lv.setUint32(18, data.length, true); lv.setUint32(22, data.length, true);
+    lv.setUint16(26, name.length, true); lv.setUint16(28, 0, true); local.set(name, 30);
+    localParts.push(local, data);
+    const central = new Uint8Array(46 + name.length);
+    const cv = new DataView(central.buffer);
+    cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0, true); cv.setUint16(10, 0, true); cv.setUint16(12, 0, true); cv.setUint16(14, dosDate, true);
+    cv.setUint32(16, crc, true); cv.setUint32(20, data.length, true); cv.setUint32(24, data.length, true);
+    cv.setUint16(28, name.length, true); cv.setUint16(30, 0, true); cv.setUint16(32, 0, true);
+    cv.setUint16(34, 0, true); cv.setUint16(36, 0, true); cv.setUint32(38, 0, true); cv.setUint32(42, localOffset, true);
+    central.set(name, 46); centralParts.push(central);
+    localOffset += 30 + name.length + data.length; centralSize += central.length;
+  }
+  const end = new Uint8Array(22); const ev = new DataView(end.buffer);
+  ev.setUint32(0, 0x06054b50, true); ev.setUint16(4, 0, true); ev.setUint16(6, 0, true);
+  ev.setUint16(8, files.length, true); ev.setUint16(10, files.length, true);
+  ev.setUint32(12, centralSize, true); ev.setUint32(16, localOffset, true); ev.setUint16(20, 0, true);
+  const output = new Uint8Array(localOffset + centralSize + end.length); let pos = 0;
+  for (const part of localParts) { output.set(part, pos); pos += part.length; }
+  for (const part of centralParts) { output.set(part, pos); pos += part.length; }
+  output.set(end, pos);
+  return new Blob([output], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+};
+const createDocxBlob = (workspace: W, documentSections: S[]) => {
+  const para = (text: string, style?: string) => '<w:p>' + (style ? '<w:pPr><w:pStyle w:val="' + style + '"/></w:pPr>' : '') + '<w:r><w:t xml:space="preserve">' + xmlEscape(text) + '</w:t></w:r></w:p>';
+  const body: string[] = [para(workspace.researchTitle || workspace.title, 'Title'), workspace.institution ? para(workspace.institution) : '', workspace.program ? para(workspace.program) : '', ''];
+  [...documentSections].sort((a, b) => a.order - b.order).forEach(section => {
+    body.push(para(section.title, 'Heading1'));
+    (section.content || '').split(/\r?\n/).forEach(line => body.push(para(line)));
+    body.push('');
+  });
+  body.push('<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>');
+  const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' + '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' + body.join('') + '</w:body></w:document>';
+  const stylesXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' + '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+    '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="24"/></w:rPr></w:style>' +
+    '<w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:pPr><w:jc w:val="center"/><w:spacing w:after="240"/></w:pPr><w:rPr><w:b/><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="32"/></w:rPr></w:style>' +
+    '<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="240" w:after="120"/></w:pPr><w:rPr><w:b/><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr></w:style></w:styles>';
+  return zipStoredFiles([
+    { name: '[Content_Types].xml', content: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>' },
+    { name: '_rels/.rels', content: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>' },
+    { name: 'word/document.xml', content: documentXml },
+    { name: 'word/styles.xml', content: stylesXml },
+    { name: 'word/_rels/document.xml.rels', content: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>' }
+  ]);
+};
 const userView = (u: any) => ({
   userId: u.id,
   email: u.email || '',
@@ -156,6 +232,10 @@ function App() {
     [meetings, MT] = useState<Mt[]>([]);
   const [chatMessages, CM] = useState<ChatMessage[]>([]);
   const [chatDraft, CD] = useState('');
+  const [chatTopic, CTopic] = useState('General');
+  const [chatFilter, CFILTER] = useState('All topics');
+  const [chatSearch, CSEARCH] = useState('');
+  const [draggedSectionId, DSI] = useState('');
   const [authEmail, AEMAIL] = useState('');
   const [authPassword, APASSWORD] = useState('');
   const [authMode, AMODE] = useState<'signin' | 'signup'>('signin');
@@ -193,6 +273,11 @@ function App() {
     [confirm, CONF] = useState('');
   const [mapQuery, MAPQ] = useState('Philippines');
   const [activeMapQuery, AMQ] = useState('Philippines');
+  const isOwner = members.some(member => member.userId === user?.userId && member.role === 'owner');
+  const visibleChatMessages = chatMessages.filter(message =>
+    (chatFilter === 'All topics' || (message.topic || 'General') === chatFilter) &&
+    message.text.toLowerCase().includes(chatSearch.toLowerCase().trim())
+  );
   const unwrap = (result: any) => {
     if (result.error) throw new Error(result.error.message || 'Supabase request failed.');
     return result.data;
@@ -256,6 +341,7 @@ function App() {
         sender_id: user.id,
         sender_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'Researcher',
         text: String(data.text || '').trim(),
+        topic: CHAT_TOPICS.includes(data.topic) ? data.topic : 'General',
       }).select('*').single());
       return { message: camelize(row) };
     }
@@ -434,8 +520,7 @@ function App() {
   useEffect(() => {
     let active = true;
     let loadedForUser = '';
-    // Keep Supabase's auth callback synchronous. Queue data fetching after it
-    // returns so it cannot contend with the auth client's internal lock.
+    // Keep Supabase's auth callback synchronous. Fetch data only after it returns.
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (!active) return;
       const nextUser = session?.user;
@@ -473,6 +558,40 @@ function App() {
       authListener.subscription.unsubscribe();
     };
   }, []);
+  const switchWorkspace = (workspaceId: string) => {
+    const selected = spaces.find(space => space.id === workspaceId);
+    if (!selected || selected.id === w?.id) return;
+    void run(async () => {
+      await load(selected);
+      CM([]);
+      P('Overview');
+    }, 'Workspace switched.');
+  };
+  const reorderSections = (fromId: string, targetId: string) => {
+    void run(async () => {
+      const ordered = [...sections].sort((a, b) => a.order - b.order);
+      const fromIndex = ordered.findIndex(section => section.id === fromId);
+      const toIndex = ordered.findIndex(section => section.id === targetId);
+      if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
+      const [moving] = ordered.splice(fromIndex, 1);
+      ordered.splice(toIndex, 0, moving);
+      const updated = ordered.map((section, order) => ({ ...section, order }));
+      await Promise.all(updated.map(section => call('put', '/api/sections/' + section.id, section)));
+      S(updated);
+    }, 'Document section order saved.');
+  };
+  const exportDocument = () => {
+    try {
+      const blob = createDocxBlob(w!, sections);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const fileName = (w?.researchTitle || w?.title || 'Research-Room').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'research-document';
+      link.href = url; link.download = fileName + '.docx';
+      document.body.appendChild(link); link.click(); link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      MSG('DOCX export prepared.'); E('');
+    } catch (e) { E(e instanceof Error ? e.message : 'Could not export the document.'); }
+  };
   const run = async (fn: () => Promise<void>, ok?: string) => {
     B(true);
     E('');
@@ -521,7 +640,6 @@ function App() {
         return;
       }
       U(userView(data.user));
-      await reloadSpaces();
     }, 'Account created.');
   const signout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -588,6 +706,7 @@ function App() {
     }, 'Section saved.');
   const addTask = () =>
     run(async () => {
+      if (!isOwner) throw Error('Only the workspace owner can create tasks or set deadlines.');
       if (!tf.title.trim()) throw Error('Task title is required.');
       const m = members.find(m => m.userId === tf.assigneeId);
       const d = await call('post', '/api/tasks', {
@@ -650,6 +769,7 @@ function App() {
       const d = await call('post', '/api/messages', {
         workspaceId: w!.id,
         text: messageText,
+        topic: chatTopic,
       });
       CM(old => [...old, d.message].sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
       CD('');
@@ -890,8 +1010,16 @@ function App() {
           </button>
         </div>
         <div className="space-label">
-          <small>WORKSPACE</small>
-          <b>{w.title}</b>
+          <small>WORKSPACES</small>
+          <select aria-label="Switch workspace" value={w.id} onChange={e => switchWorkspace(e.target.value)}>
+            {spaces.map(space => <option key={space.id} value={space.id}>{space.title}</option>)}
+          </select>
+          <button type="button" className="workspace-action" onClick={() => { WF({ title: 'Research workspace', researchTitle: '', institution: '', program: 'Bachelor of Science in Information Technology' }); MOD('create'); }}>
+            <Plus size={13} /> New workspace
+          </button>
+          <button type="button" className="workspace-action secondary-action" onClick={() => { CODE(''); MOD('join'); }}>
+            <Users size={13} /> Join with code
+          </button>
         </div>
         <nav>
           {nav.map(([n, Icon]) => (
@@ -965,9 +1093,9 @@ function App() {
                   <h1>Welcome, {(user.name || 'researcher').split(' ')[0]}.</h1>
                   <p>Small steps, clear ownership, one shared proposal.</p>
                 </div>
-                <button className="primary" onClick={() => P('Tasks')}>
+                {isOwner && <button className="primary" onClick={() => P('Tasks')}>
                   <Plus size={16} /> Add a task
-                </button>
+                </button>}
               </div>
               <section className="hero">
                 <small>CURRENT RESEARCH</small>
@@ -1144,13 +1272,19 @@ function App() {
                   <h1>Document workspace</h1>
                   <p>Editable sections are saved for all workspace members.</p>
                 </div>
-                <button className="primary" onClick={addTemplate}>
-                  <Plus size={16} /> Add template sections
-                </button>
+                <div className="document-actions">
+                  <button className="secondary" onClick={exportDocument} disabled={!sections.length}>
+                    <FileDown size={15} /> Export .docx
+                  </button>
+                  <button className="primary" onClick={addTemplate}>
+                    <Plus size={16} /> Add template sections
+                  </button>
+                </div>
               </div>
               <div className="doc-layout">
                 <section className="panel index">
                   <h3>Contents · {sections.length}</h3>
+                  <p className="section-order-tip"><GripVertical size={13} /> Drag sections to rearrange the document.</p>
                   <input
                     placeholder="Search sections…"
                     value={search}
@@ -1164,6 +1298,11 @@ function App() {
                       <button
                         className={sid === s.id ? 'selected' : ''}
                         key={s.id}
+                        draggable
+                        onDragStart={e => { DSI(s.id); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', s.id); }}
+                        onDragOver={e => e.preventDefault()}
+                        onDrop={e => { e.preventDefault(); const fromId = draggedSectionId || e.dataTransfer.getData('text/plain'); if (fromId && fromId !== s.id) void reorderSections(fromId, s.id); DSI(''); }}
+                        onDragEnd={() => DSI('')}
                         onClick={() => open(s)}
                       >
                         {String(i + 1).padStart(2, '0')} · {s.title}
@@ -1238,7 +1377,7 @@ function App() {
                 </div>
               </div>
               <div className="task-layout">
-                <section className="panel">
+                {isOwner ? <section className="panel">
                   <h3>Create a task</h3>
                   <form
                     onSubmit={e => {
@@ -1321,22 +1460,30 @@ function App() {
                       <Plus size={15} /> Create task
                     </button>
                   </form>
-                </section>
+                </section> : <section className="panel owner-restricted">
+                  <h3>Task creation is owner-only</h3>
+                  <p>Only the workspace owner can create tasks or set and change deadlines. You can still view the plan and update task status.</p>
+                  <small>Ask your research leader to add a task if new work needs to be assigned.</small>
+                </section>}
                 <section className="panel">
                   <h3>Team task list · {tasks.length}</h3>
                   {tasks.map(t => (
                     <article className="task-card" key={t.id}>
                       <div className="panel-head">
                         <small>{t.priority} priority</small>
-                        <button className="danger" onClick={() => CONF(t.id)}>
+                        {isOwner && <button className="danger" onClick={() => CONF(t.id)}>
                           <Trash2 size={14} />
-                        </button>
+                        </button>}
                       </div>
                       <b>{t.title}</b>
                       {t.description && <p>{t.description}</p>}
                       <p className="muted">
                         {t.assigneeName || 'Unassigned'} · {date(t.dueDate)}
                       </p>
+                      {isOwner && <label className="task-deadline-edit">
+                        Deadline
+                        <input type="date" value={t.dueDate || ''} onChange={e => changeTask(t, { dueDate: e.target.value })} />
+                      </label>}
                       <div className="two">
                         <label>
                           Status
@@ -1351,28 +1498,22 @@ function App() {
                             ))}
                           </select>
                         </label>
-                        <label>
+                        {isOwner ? <label>
                           Assignee
                           <select
                             value={t.assigneeId || ''}
                             onChange={e => {
-                              const m = members.find(
-                                m => m.userId === e.target.value
-                              );
-                              changeTask(t, {
-                                assigneeId: e.target.value,
-                                assigneeName: m?.name || '',
-                              });
+                              const m = members.find(m => m.userId === e.target.value);
+                              changeTask(t, { assigneeId: e.target.value, assigneeName: m?.name || '' });
                             }}
                           >
                             <option value="">Unassigned</option>
-                            {members.map(m => (
-                              <option key={m.userId} value={m.userId}>
-                                {m.name}
-                              </option>
-                            ))}
+                            {members.map(m => <option key={m.userId} value={m.userId}>{m.name}</option>)}
                           </select>
-                        </label>
+                        </label> : <div className="task-assignee-readonly">
+                          <small>Assigned to</small>
+                          <b>{t.assigneeName || 'Unassigned'}</b>
+                        </div>}
                       </div>
                     </article>
                   ))}
@@ -1501,37 +1642,64 @@ function App() {
                   </div>
                   <span className="chat-refresh-label"><span /> Updates about every 5 seconds</span>
                 </div>
+                <div className="chat-tools">
+                  <label className="chat-search">
+                    <Search size={14} />
+                    <input value={chatSearch} onChange={e => CSEARCH(e.target.value)} placeholder="Search research discussions…" aria-label="Search messages" />
+                  </label>
+                  <label className="chat-filter">
+                    <span>Topic</span>
+                    <select value={chatFilter} onChange={e => CFILTER(e.target.value)}>
+                      {['All topics', ...CHAT_TOPICS].map(topic => <option key={topic}>{topic}</option>)}
+                    </select>
+                  </label>
+                </div>
                 <div className="chat-messages" aria-live="polite">
-                  {chatMessages.map(m => (
+                  {visibleChatMessages.map(m => (
                     <article className={'chat-message ' + (m.senderId === user.userId ? 'mine' : 'theirs')} key={m.id}>
                       <div className="chat-message-meta">
                         <strong>{m.senderId === user.userId ? 'You' : m.senderName}</strong>
+                        <span className="chat-topic-tag">{m.topic || 'General'}</span>
                         <time>{new Date(m.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</time>
                       </div>
                       <p>{m.text}</p>
                     </article>
                   ))}
-                  {!chatMessages.length && (
+                  {!visibleChatMessages.length && (
                     <div className="chat-empty">
                       <MessageCircle size={30} />
-                      <strong>Start your group conversation</strong>
-                      <p>Messages you send here are shared with everyone who has joined this workspace.</p>
+                      <strong>{chatMessages.length ? 'No matching messages' : 'Start your group conversation'}</strong>
+                      <p>{chatMessages.length ? 'Try a different topic or search phrase.' : 'Use the topic selector to keep Chapter 1, Chapter 2, literature review and methodology discussions organised.'}</p>
                     </div>
                   )}
                 </div>
+                <div className="chat-prompts">
+                  <small>RESEARCH QUICK PROMPTS</small>
+                  <div>
+                    <button type="button" onClick={() => { CTopic('Literature Review'); CD(d => (d ? d + '\n' : '') + 'Could you share the citation, publication year, method, key finding, and limitation of this study?'); }}>Ask for a citation</button>
+                    <button type="button" onClick={() => { CTopic('Chapter 1'); CD(d => (d ? d + '\n' : '') + 'What evidence supports this research problem, and what gap does our study address?'); }}>Clarify the research gap</button>
+                    <button type="button" onClick={() => { CTopic('Methodology'); CD(d => (d ? d + '\n' : '') + 'What data, participants, instruments, and evaluation criteria do we still need to define?'); }}>Review methodology</button>
+                  </div>
+                </div>
                 <form className="chat-composer" onSubmit={e => { e.preventDefault(); void sendChat(); }}>
+                  <label className="chat-topic-picker">
+                    Discussion topic
+                    <select value={chatTopic} onChange={e => CTopic(e.target.value)}>
+                      {CHAT_TOPICS.map(topic => <option key={topic}>{topic}</option>)}
+                    </select>
+                  </label>
                   <textarea
-                    rows={2}
+                    rows={3}
                     maxLength={2000}
                     value={chatDraft}
                     onChange={e => CD(e.target.value)}
-                    placeholder="Message your research group…"
+                    placeholder="Share a research question, source, draft paragraph, decision, or progress update…"
                     aria-label="Message your research group"
                   />
                   <div className="chat-composer-footer">
-                    <small>{chatDraft.length}/2000 characters · Be specific and respectful.</small>
+                    <small>{chatDraft.length}/2000 characters · Keep claims tied to sources and separate evidence from assumptions.</small>
                     <button className="primary" type="submit" disabled={busy || !chatDraft.trim()}>
-                      <Send size={15} /> Send message
+                      <Send size={15} /> Send to team
                     </button>
                   </div>
                 </form>
@@ -1634,6 +1802,34 @@ function App() {
           )}
         </div>
       </main>
+      {(modal === 'create' || modal === 'join') && (
+        <div className="shade">
+          <form className="modal" onSubmit={e => { e.preventDefault(); modal === 'create' ? create() : join(); }}>
+            <button type="button" className="close" onClick={() => MOD('')}><X size={18} /></button>
+            <h2>{modal === 'create' ? 'Create another workspace' : 'Join a workspace'}</h2>
+            {modal === 'create' ? <>
+              {[
+                ['Workspace name', 'title'],
+                ['Thesis title', 'researchTitle'],
+                ['School / institution', 'institution'],
+                ['Degree program', 'program'],
+              ].map(([label, key]) => (
+                <label key={key}>
+                  {label}
+                  <input required={key === 'title'} value={(wf as any)[key]} onChange={e => WF({ ...wf, [key]: e.target.value })} />
+                </label>
+              ))}
+            </> : <label>Workspace join code
+              <input required value={code} onChange={e => CODE(e.target.value.toUpperCase())} maxLength={12} placeholder="Ask the owner for the code" />
+            </label>}
+            <div className="actions">
+              <button type="button" className="secondary" onClick={() => MOD('')}>Cancel</button>
+              <button className="primary" type="submit" disabled={busy}>{busy ? 'Please wait…' : modal === 'create' ? 'Create workspace' : 'Join workspace'}</button>
+            </div>
+            {err && <p className="error">{err}</p>}
+          </form>
+        </div>
+      )}
       {confirm && (
         <div className="shade">
           <div className="modal">
