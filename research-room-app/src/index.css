@@ -243,6 +243,49 @@ small {
 .auth-form .secondary {
   margin-top: -3px;
 }
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #a1a5b5;
+  font-size: 10px;
+  margin: 0;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  height: 1px;
+  background: #eceef5;
+  flex: 1;
+}
+.google-auth {
+  position: relative;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid #e0e4ef;
+  border-radius: 11px;
+  background: #fff;
+  color: #454a60;
+  font-size: 13px;
+  font-weight: 700;
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+.google-auth:hover {
+  background: #fafaff;
+  border-color: #c8cce0;
+}
+.google-auth:focus-visible {
+  outline: none;
+  border-color: #8377e4;
+  box-shadow: 0 0 0 4px #6558d918;
+}
+.google-g {
+  font: 800 17px Arial, sans-serif;
+  color: #4285f4;
+}
 .auth-box > small {
   margin-top: 18px;
 }
