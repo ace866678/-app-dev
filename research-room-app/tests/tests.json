@@ -36,54 +36,58 @@
     "expected": "The saved introduction text is still present."
   },
   {
-    "name": "Create, assign, and complete a task",
-    "viewport": "desktop",
+    "name": "Create and update tasks with validation",
+    "viewport": "mobile",
     "covers": [
       "task CRUD",
       "member assignment",
       "task status",
-      "database persistence"
+      "due dates",
+      "required field validation"
     ],
-    "description": "Verifies a member can create a task, assign it, update status, and retain the changes.",
+    "description": "Verifies a member can create, assign, update, and retain a task while empty task titles are blocked.",
     "steps": [
-      "Open Tasks",
-      "Create a task with a title and due date",
-      "Assign it to a workspace member and set status to In progress",
-      "Save, refresh, and reopen Tasks"
+      "Open Tasks and create a task with a title and due date",
+      "Assign the task to a workspace member and set status to In progress",
+      "Try to submit a task with an empty title",
+      "Refresh and reopen Tasks"
     ],
-    "expected": "The task appears with the chosen assignee, due date, and status."
+    "expected": "The saved task retains its details, and an empty task title is rejected."
   },
   {
-    "name": "Prevent empty document and task submissions",
-    "viewport": "mobile",
-    "covers": [
-      "required field validation",
-      "invalid-write guardrail",
-      "mobile responsive layout"
-    ],
-    "description": "Verifies required fields prevent empty records and forms remain usable on mobile.",
-    "steps": [
-      "Open the task creation form",
-      "Leave the task title blank and submit",
-      "Open the document editor and save an empty section title"
-    ],
-    "expected": "Validation messages appear and no blank task or section is created."
-  },
-  {
-    "name": "Join a workspace as a second member",
+    "name": "Chat with group members and retain messages",
     "viewport": "desktop",
     "covers": [
-      "shared workspace access",
-      "join code validation",
-      "cross-member shared data",
-      "authorization"
+      "team chat",
+      "authenticated message create/read",
+      "workspace-scoped authorization",
+      "cross-member updates",
+      "message persistence"
     ],
-    "description": "Verifies a second signed-in member can join using a workspace code and view shared tasks and document sections.",
+    "description": "Verifies workspace members can send messages and see each other's saved messages.",
     "steps": [
-      "Actor A creates a workspace and a task",
-      "Actor B signs in and enters Actor A's join code",
-      "Actor B opens the workspace tasks and document"
+      "Actor A creates a workspace and shares its join code",
+      "Actor B signs in and joins that workspace",
+      "Actor A opens Chat and sends a message",
+      "Actor B opens Chat or refreshes messages"
     ],
-    "expected": "Actor B sees the shared workspace content; an invalid join code is rejected."
+    "expected": "The message appears with its sender identity for both members and remains available after refresh."
+  },
+  {
+    "name": "Join a workspace and read shared research content",
+    "viewport": "desktop",
+    "covers": [
+      "workspace join code",
+      "shared workspace access",
+      "authorization",
+      "cross-member document visibility"
+    ],
+    "description": "Verifies a second member can join by code and access the workspace's shared proposal sections.",
+    "steps": [
+      "Actor A creates a workspace and adds a proposal section",
+      "Actor B signs in and joins using Actor A's code",
+      "Actor B opens the document workspace"
+    ],
+    "expected": "Actor B can view the shared section, while an invalid code is rejected."
   }
 ]
