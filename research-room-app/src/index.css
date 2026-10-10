@@ -172,6 +172,81 @@ small {
   color: #b13245 !important;
   font-size: 12px !important;
 }
+
+/* Purpose-built form fields for the sign-in and account creation screen. */
+.auth-form {
+  display: grid;
+  gap: 13px;
+  margin-top: 24px;
+}
+.auth-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  color: #51566b;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1px;
+}
+.auth-form input {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 52px;
+  padding: 14px 15px;
+  border: 1px solid #e0e4f0;
+  border-radius: 12px;
+  outline: none;
+  background: #f9faff;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  box-shadow: none;
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+.auth-form input::placeholder {
+  color: #a4a9ba;
+  opacity: 1;
+}
+.auth-form input:hover {
+  border-color: #c8cce0;
+  background: #fff;
+}
+.auth-form input:focus,
+.auth-form input:focus-visible {
+  border-color: #8377e4;
+  background: #fff;
+  box-shadow: 0 0 0 4px #6558d918;
+}
+.auth-form input:disabled {
+  cursor: not-allowed;
+  background: #f0f1f7;
+}
+.auth-form input:-webkit-autofill,
+.auth-form input:-webkit-autofill:hover,
+.auth-form input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--ink);
+  box-shadow: 0 0 0 1000px #f9faff inset;
+  transition: background-color 9999s ease-out 0s;
+}
+.auth-form .primary,
+.auth-form .secondary {
+  min-height: 48px;
+  border-radius: 11px;
+  font-size: 13px;
+}
+.auth-form .primary {
+  margin-top: 5px;
+}
+.auth-form .secondary {
+  margin-top: -3px;
+}
+.auth-box > small {
+  margin-top: 18px;
+}
+
 .welcome {
   min-height: 100vh;
   background: #f7f8fc;
