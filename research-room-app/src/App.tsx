@@ -25,6 +25,9 @@ import {
   FileDown,
   GripVertical,
   Search,
+  ChevronLeft,
+  FileUp,
+  ArrowLeftRight,
 } from 'lucide-react';
 type W = {
   id: string;
@@ -41,7 +44,7 @@ type M = {
   email: string;
   role: string;
 };
-type S = { id: string; title: string; content: string; order: number };
+type S = { id: string; title: string; content: string; order: number; chapter: string };
 type T = {
   id: string;
   title: string;
@@ -210,6 +213,110 @@ const createDocxBlob = (workspace: W, documentSections: S[]) => {
     { name: 'word/_rels/document.xml.rels', content: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>' }
   ]);
 };
+
+const localDateKey = (date: Date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + d;
+};
+const meetingDateLabel = (value?: string) => {
+  if (!value) return 'Date not set';
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? 'Date not set' : parsed.toLocaleString([], {
+    weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+  });
+};
+const chapterFromHeading = (value: string) => {
+  const match = value.trim().match(/^chapter\s+(one|two|three|four|five|six|seven|eight|nine|ten|[ivxlcdm]+|\d+)\b[\s:.\-–—]*(.*)$/i);
+  if (!match) return null;
+  const token = match[1].toLowerCase();
+  const wordMap: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+  let number = wordMap[token] || Number(token);
+  if (!number && /^[ivxlcdm]+$/i.test(token)) {
+    const values: Record<string, number> = { i: 1, v: 5, x: 10, l: 50, c: 100, d: 500, m: 1000 };
+    let total = 0;
+    for (let i = 0; i < token.length; i++) total += (values[token[i]] < (values[token[i + 1]] || 0) ? -1 : 1) * values[token[i]];
+    number = total;
+  }
+  return number > 0 && number < 100 ? 'Chapter ' + number : null;
+};
+const defaultChapterForTitle = (title: string) => {
+  if (/references|bibliography|appendi(?:x|ces)/i.test(title)) return 'References';
+  if (/related literature|related studies|related systems|synthesis/i.test(title)) return 'Chapter 2';
+  if (/methodology|hardware\/software|hardware and software|calendar of activities|budgetary estimate|human resources|research design/i.test(title)) return 'Chapter 3';
+  return 'Chapter 1';
+};
+const detectSampleSections = (html: string, rawText: string) => {
+  const parsed = new DOMParser().parseFromString(html, 'text/html');
+  let blocks = Array.from(parsed.body.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li'))
+    .map(element => ({ text: (element.textContent || '').replace(/\s+/g, ' ').trim(), heading: /^H[1-6]$/.test(element.tagName) }))
+    .filter(block => block.text.length > 0 && block.text.length < 12000);
+  if (!blocks.length) blocks = rawText.split(/\r?\n/).map(line => ({ text: line.trim(), heading: false })).filter(block => block.text);
+  const output: Array<{ title: string; content: string; chapter: string; order: number }> = [];
+  let activeChapter = 'Chapter 1';
+  let current: { title: string; content: string; chapter: string; order: number } | null = null;
+  const flush = () => {
+    if (!current) return;
+    current.content = current.content.trim();
+    current.order = output.length;
+    output.push(current);
+    current = null;
+  };
+  const knownTitle = /^(abstract|acknowledg(?:e)?ments|introduction|background(?: of the problem)?|statement of the problem|research questions|objectives of the study|significance of the study|scope and limitations|review of related literature|related literature|related studies|related systems|theoretical framework|conceptual framework|methodology|research design|research locale|research participants|respondents|research instruments|data gathering procedure|data analysis|ethical considerations|references|bibliography|appendices|appendix)$/i;
+  for (const block of blocks) {
+    const text = block.text.trim();
+    const chapter = chapterFromHeading(text);
+    if (chapter) {
+      flush();
+      activeChapter = chapter;
+      current = { title: text, content: '', chapter: activeChapter, order: output.length };
+      continue;
+    }
+    const numbered = text.match(/^(\d{1,2})(?:\.\d+){0,3}[.)]?\s+\S/);
+    const uppercaseHeading = text.length <= 90 && /[A-Z]/.test(text) && text === text.toLocaleUpperCase() && /[A-Z]{3}/.test(text);
+    const titleHeading = knownTitle.test(text);
+    const heading = block.heading || !!numbered || titleHeading || uppercaseHeading;
+    if (heading) {
+      if (!block.heading && numbered) {
+        const number = Number(numbered[1]);
+        if (number > 0 && number < 10) activeChapter = 'Chapter ' + number;
+      } else if (defaultChapterForTitle(text) !== 'Chapter 1' && !chapter) {
+        activeChapter = defaultChapterForTitle(text);
+      }
+      flush();
+      current = { title: text, content: '', chapter: activeChapter, order: output.length };
+    } else {
+      if (!current) current = { title: 'Introduction', content: '', chapter: activeChapter, order: output.length };
+      current.content += (current.content ? '\n' : '') + text;
+    }
+  }
+  flush();
+  if (output.length === 1 && output[0].content.trim().length > 3000) {
+    const lines = rawText.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    const compact: typeof output = [];
+    let active = 'Chapter 1';
+    let item: typeof output[number] | null = null;
+    for (const line of lines) {
+      const chapter = chapterFromHeading(line);
+      if (chapter) {
+        if (item) { item.order = compact.length; compact.push(item); }
+        active = chapter;
+        item = { title: line, content: '', chapter: active, order: compact.length };
+      } else if (line.length < 100 && (knownTitle.test(line) || /^\d{1,2}(?:\.\d+){0,3}[.)]?\s+\S/.test(line))) {
+        if (item) { item.order = compact.length; compact.push(item); }
+        item = { title: line, content: '', chapter: active, order: compact.length };
+      } else {
+        if (!item) item = { title: 'Introduction', content: '', chapter: active, order: compact.length };
+        item.content += (item.content ? '\n' : '') + line;
+      }
+    }
+    if (item) { item.order = compact.length; compact.push(item); }
+    if (compact.length > 1) return compact;
+  }
+  return output;
+};
+
 const userView = (u: any) => ({
   userId: u.id,
   email: u.email || '',
@@ -236,6 +343,13 @@ function App() {
   const [chatFilter, CFILTER] = useState('All topics');
   const [chatSearch, CSEARCH] = useState('');
   const [draggedSectionId, DSI] = useState('');
+  const [sectionChapter, SCHAPTER] = useState('Chapter 1');
+  const [exportChapter, EXPCHAPTER] = useState('All chapters');
+  const [templateImportPreview, TIP] = useState<{ fileName: string; sections: Array<{ title: string; content: string; chapter: string; order: number }> } | null>(null);
+  const [transferTarget, TRANSFER] = useState<M | null>(null);
+  const [selectedMeetingId, SMI] = useState(''); 
+  const [calendarMonth, CALM] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [selectedCalendarDay, CALD] = useState(() => localDateKey(new Date()));
   const [authEmail, AEMAIL] = useState('');
   const [authPassword, APASSWORD] = useState('');
   const [authMode, AMODE] = useState<'signin' | 'signup'>('signin');
@@ -334,6 +448,15 @@ function App() {
       return { messages: camelize(rows) };
     }
 
+    if (method === 'post' && url === '/api/workspaces/transfer-owner') {
+      const result = await supabase.rpc('transfer_research_workspace_ownership', {
+        p_workspace_id: data.workspaceId,
+        p_new_owner_id: data.newOwnerId,
+      });
+      if (result.error) throw new Error(result.error.message);
+      return { transfer: result.data };
+    }
+
     if (method === 'post' && url === '/api/messages') {
       const user = await currentUser();
       const row = unwrap(await supabase.from('research_messages').insert({
@@ -382,6 +505,7 @@ function App() {
         workspace_id: data.workspaceId,
         title: String(data.title || '').trim(),
         content: data.content || '',
+        chapter: String(data.chapter || 'Chapter 1').trim() || 'Chapter 1',
         order: Number(data.order) || 0,
         updated_by: user.id,
       }).select('*').single());
@@ -392,6 +516,7 @@ function App() {
       const row = unwrap(await supabase.from('research_sections').update({
         title: data.title,
         content: data.content || '',
+        chapter: String(data.chapter || 'Chapter 1').trim() || 'Chapter 1',
         order: Number(data.order) || 0,
         updated_by: user.id,
         updated_at: new Date().toISOString(),
@@ -516,6 +641,9 @@ function App() {
     S((d.sections || []).sort((a: S, b: S) => a.order - b.order));
     T(d.tasks || []);
     MT(d.meetings || []);
+    SCHAPTER((d.sections || [])[0]?.chapter || 'Chapter 1');
+    EXPCHAPTER('All chapters');
+    TIP(null);
   };
   useEffect(() => {
     let active = true;
@@ -582,14 +710,16 @@ function App() {
   };
   const exportDocument = () => {
     try {
-      const blob = createDocxBlob(w!, sections);
+      const chosenSections = exportChapter === 'All chapters' ? sections : sections.filter(section => (section.chapter || 'Chapter 1') === exportChapter);
+      if (!chosenSections.length) throw new Error('There are no sections assigned to ' + exportChapter + '.');
+      const blob = createDocxBlob(w!, chosenSections);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       const fileName = (w?.researchTitle || w?.title || 'Research-Room').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'research-document';
-      link.href = url; link.download = fileName + '.docx';
+      link.href = url; link.download = fileName + (exportChapter === 'All chapters' ? '' : '-' + exportChapter.toLowerCase().replace(/[^a-z0-9]+/g, '-')) + '.docx';
       document.body.appendChild(link); link.click(); link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      MSG('DOCX export prepared.'); E('');
+      MSG('DOCX export prepared for ' + exportChapter + '.'); E('');
     } catch (e) { E(e instanceof Error ? e.message : 'Could not export the document.'); }
   };
   const run = async (fn: () => Promise<void>, ok?: string) => {
@@ -641,6 +771,53 @@ function App() {
       }
       U(userView(data.user));
     }, 'Account created.');
+  const transferOwnership = (newOwnerId: string) => run(async () => {
+    if (!isOwner) throw new Error('Only the current owner can transfer ownership.');
+    const target = members.find(member => member.userId === newOwnerId);
+    if (!target) throw new Error('Choose an existing workspace member.');
+    await call('post', '/api/workspaces/transfer-owner', { workspaceId: w!.id, newOwnerId });
+    TRANSFER(null);
+    await reloadSpaces();
+  }, 'Workspace ownership transferred.');
+  const prepareTemplateImport = (file?: File) => {
+    if (!file) return;
+    void run(async () => {
+      if (!file.name.toLowerCase().endsWith('.docx')) throw new Error('Upload a Microsoft Word .docx sample. PDF files and older .doc formats are not supported yet.');
+      if (file.size > 15 * 1024 * 1024) throw new Error('Please choose a DOCX sample smaller than 15 MB.');
+      const mammothModule: any = await import('mammoth');
+      const mammoth = mammothModule.default && !mammothModule.convertToHtml ? mammothModule.default : mammothModule;
+      const options = { styleMap: ["p[style-name='Chapter Title'] => h1:fresh", "p[style-name='Chapter Heading'] => h1:fresh", "p[style-name='Section Heading'] => h2:fresh"] };
+      const input = { arrayBuffer: await file.arrayBuffer() };
+      const [htmlResult, textResult] = await Promise.all([
+        mammoth.convertToHtml(input, options),
+        mammoth.extractRawText(input)
+      ]);
+      const detected = detectSampleSections(htmlResult.value || '', textResult.value || '');
+      if (!detected.length) throw new Error('I could not detect headings in this sample. Try a DOCX with Chapter and section headings using Word Heading styles, numbered headings, or clear uppercase headings.');
+      TIP({ fileName: file.name, sections: detected });
+      MSG('Detected ' + detected.length + ' sections. Review the preview before importing.');
+    });
+  };
+  const importSampleStructure = () => {
+    if (!templateImportPreview) return;
+    void run(async () => {
+      const existingTitles = new Set(sections.map(section => section.title.trim().toLowerCase()));
+      const newSections = templateImportPreview.sections.filter(section => !existingTitles.has(section.title.trim().toLowerCase()));
+      if (!newSections.length) throw new Error('All detected section titles already exist in this workspace.');
+      for (const [index, section] of newSections.entries()) {
+        await call('post', '/api/sections', {
+          workspaceId: w!.id,
+          title: section.title,
+          content: section.content,
+          chapter: section.chapter || 'Chapter 1',
+          order: sections.length + index
+        });
+      }
+      TIP(null);
+      await load(w!);
+      P('Document');
+    }, 'Sample structure imported. Existing sections were kept.');
+  };
   const signout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) E(error.message);
@@ -668,6 +845,7 @@ function App() {
     SID(s.id);
     ST(s.title);
     SC(s.content);
+    SCHAPTER(s.chapter || 'Chapter 1');
     P('Document');
   };
   const addTemplate = () =>
@@ -679,7 +857,8 @@ function App() {
             workspaceId: w!.id,
             title: t,
             content: c,
-            order: i,
+            chapter: defaultChapterForTitle(t),
+            order: sections.length + i,
           });
       }
       await load(w!);
@@ -691,6 +870,7 @@ function App() {
         await call('put', '/api/sections/' + sid, {
           title,
           content,
+          chapter: sectionChapter.trim() || 'Chapter 1',
           order: sections.find(s => s.id === sid)?.order || 0,
         });
       else {
@@ -698,6 +878,7 @@ function App() {
           workspaceId: w!.id,
           title,
           content,
+          chapter: sectionChapter.trim() || 'Chapter 1',
           order: sections.length,
         });
         SID(d.section.id);
@@ -740,6 +921,7 @@ function App() {
       });
       MT(a => [d.meeting, ...a]);
       MF({ title: 'Research group meeting', date: '', notes: '' });
+      SMI(d.meeting.id);
     }, 'Meeting created.');
   const saveSettings = (e: any) => {
     e.preventDefault();
@@ -794,6 +976,26 @@ function App() {
   }, [page, w?.id]);
   const completed = tasks.filter(t => t.status === 'Done').length,
     progress = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
+  const chapterOptions = Array.from(new Set(sections.map(section => section.chapter || 'Chapter 1')))
+    .sort((a, b) => {
+      const ai = Number(a.match(/\d+/)?.[0] || 100);
+      const bi = Number(b.match(/\d+/)?.[0] || 100);
+      return ai - bi || a.localeCompare(b);
+    });
+  const sortedMeetings = [...meetings].filter(meeting => meeting.date && !Number.isNaN(new Date(meeting.date).getTime()))
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const selectedMeeting = meetings.find(meeting => meeting.id === selectedMeetingId) || sortedMeetings[0] || null;
+  const upcomingMeetings = sortedMeetings.filter(meeting => new Date(meeting.date).getTime() >= Date.now()).slice(0, 5);
+  const monthOffset = (calendarMonth.getDay() + 6) % 7;
+  const calendarCells = Array.from({ length: 42 }, (_, index) =>
+    new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), index - monthOffset + 1)
+  );
+  const calendarEventKeys = new Set([
+    ...sortedMeetings.map(meeting => localDateKey(new Date(meeting.date))),
+    ...tasks.filter(task => task.dueDate).map(task => task.dueDate.slice(0, 10))
+  ]);
+  const selectedDayMeetings = sortedMeetings.filter(meeting => localDateKey(new Date(meeting.date)) === selectedCalendarDay);
+  const selectedDayTasks = tasks.filter(task => task.dueDate && task.dueDate.slice(0, 10) === selectedCalendarDay);
   const deadlines = tasks
     .filter(t => t.status !== 'Done' && !!t.dueDate)
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
@@ -1191,6 +1393,44 @@ function App() {
                   )}
                 </section>
               </div>
+              <div className="dashboard-meeting-layout">
+                <section className="panel calendar-panel">
+                  <div className="panel-head"><div><h3>Research calendar</h3><small>Meetings and task deadlines</small></div>
+                    <div className="calendar-controls">
+                      <button aria-label="Previous month" className="calendar-nav" onClick={() => { const next = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth()-1, 1); CALM(next); CALD(localDateKey(next)); }}><ChevronLeft size={16} /></button>
+                      <b>{calendarMonth.toLocaleDateString([], { month:'long', year:'numeric' })}</b>
+                      <button aria-label="Next month" className="calendar-nav" onClick={() => { const next = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth()+1, 1); CALM(next); CALD(localDateKey(next)); }}><ChevronRight size={16} /></button>
+                    </div>
+                  </div>
+                  <div className="calendar-grid">
+                    {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(day => <div key={day} className="calendar-weekday">{day}</div>)}
+                    {calendarCells.map((day,index) => {
+                      const key = localDateKey(day);
+                      const inMonth = day.getMonth() === calendarMonth.getMonth();
+                      const event = calendarEventKeys.has(key);
+                      return <button type="button" key={key + '-' + index} className={'calendar-day' + (inMonth ? '' : ' other-month') + (key === selectedCalendarDay ? ' selected' : '') + (event ? ' has-events' : '')} onClick={() => CALD(key)}>
+                        <span>{day.getDate()}</span>{event && <i aria-label="Events scheduled" />}
+                      </button>;
+                    })}
+                  </div>
+                  <div className="calendar-legend"><span><i className="meeting-dot" /> Events</span><span><i className="deadline-dot" /> Task deadlines</span><small>Select a date to see items.</small></div>
+                </section>
+                <section className="panel calendar-day-panel">
+                  <div className="panel-head"><div><h3>{new Date(selectedCalendarDay + 'T00:00:00').toLocaleDateString([], { weekday:'long', month:'short', day:'numeric' })}</h3><small>Schedule for selected date</small></div><button onClick={() => P('Meetings')}>All meetings →</button></div>
+                  {selectedDayMeetings.map(meeting => <div className="calendar-event" key={meeting.id}><span className="event-time">{new Date(meeting.date).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}</span><span><b>{meeting.title}</b><small>Research meeting</small></span></div>)}
+                  {selectedDayTasks.map(task => <div className="calendar-event deadline-event" key={task.id}><span className="event-time">Due</span><span><b>{task.title}</b><small>{task.status} · {task.assigneeName || 'Unassigned'}</small></span></div>)}
+                  {!selectedDayMeetings.length && !selectedDayTasks.length && <p className="muted calendar-empty">No meetings or deadlines for this day.</p>}
+                  <button className="secondary wide calendar-add-meeting" onClick={() => { P('Meetings'); SMI(''); }}>+ Schedule a meeting</button>
+                </section>
+              </div>
+              <div className="dashboard-upcoming-meetings panel">
+                <div className="panel-head"><div><h3>Upcoming research meetings</h3><small>Date, time and meeting focus</small></div><button onClick={() => P('Meetings')}>Manage schedule →</button></div>
+                {upcomingMeetings.slice(0,4).map(meeting => <button type="button" className="upcoming-meeting-row" key={meeting.id} onClick={() => { SMI(meeting.id); P('Meetings'); }}>
+                  <span className="upcoming-meeting-date"><b>{new Date(meeting.date).toLocaleDateString([], {month:'short',day:'numeric'})}</b><small>{new Date(meeting.date).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}</small></span>
+                  <span><b>{meeting.title}</b><small>{meeting.agenda?.[0] || 'Research group meeting'}</small></span><ChevronRight size={15}/>
+                </button>)}
+                {!upcomingMeetings.length && <p className="muted">No future meetings scheduled. Open Meetings to add the date and time of your next research session.</p>}
+              </div>
               <div className="cols dashboard-lower">
                 <section className="panel">
                   <div className="panel-head">
@@ -1270,99 +1510,89 @@ function App() {
                 <div>
                   <small>THESIS PROPOSAL</small>
                   <h1>Document workspace</h1>
-                  <p>Editable sections are saved for all workspace members.</p>
+                  <p>Organize chapters, import a sample structure, and export just what your adviser requests.</p>
                 </div>
                 <div className="document-actions">
-                  <button className="secondary" onClick={exportDocument} disabled={!sections.length}>
-                    <FileDown size={15} /> Export .docx
-                  </button>
-                  <button className="primary" onClick={addTemplate}>
-                    <Plus size={16} /> Add template sections
-                  </button>
+                  <select aria-label="Choose chapter to export" value={exportChapter} onChange={e => EXPCHAPTER(e.target.value)}>
+                    <option>All chapters</option>
+                    {chapterOptions.map(chapter => <option key={chapter}>{chapter}</option>)}
+                  </select>
+                  <button className="secondary" onClick={exportDocument} disabled={!sections.length}><FileDown size={15} /> Export .docx</button>
+                  <button className="primary" onClick={addTemplate}><Plus size={16} /> Add proposal template</button>
                 </div>
               </div>
+              <div className="template-import-bar panel">
+                <div>
+                  <h3><FileUp size={16} /> Import sample research template</h3>
+                  <p>Upload a .docx to detect chapter and section headings. It previews the structure before adding sections and doesn't delete existing work.</p>
+                </div>
+                <label className="secondary upload-template-button">
+                  <FileUp size={14} /> Choose .docx sample
+                  <input className="template-file-input" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={e => { void prepareTemplateImport(e.target.files?.[0]); e.currentTarget.value = ''; }} />
+                </label>
+              </div>
+              {templateImportPreview && (
+                <section className="panel template-preview">
+                  <div className="panel-head">
+                    <div><h3>Detected structure · {templateImportPreview.sections.length} sections</h3><small>{templateImportPreview.fileName} · review before importing</small></div>
+                    <button className="danger" onClick={() => TIP(null)}>Cancel</button>
+                  </div>
+                  <div className="template-preview-list">
+                    {templateImportPreview.sections.slice(0, 18).map((section, index) => (
+                      <div key={section.order + '-' + section.title} className="template-preview-row">
+                        <span>{String(index + 1).padStart(2, '0')}</span><strong>{section.title}</strong><em>{section.chapter}</em>
+                      </div>
+                    ))}
+                    {templateImportPreview.sections.length > 18 && <p className="muted">Plus {templateImportPreview.sections.length - 18} more detected sections.</p>}
+                  </div>
+                  <button className="primary" onClick={importSampleStructure} disabled={busy}><FileUp size={14} /> Import sections (keep existing work)</button>
+                </section>
+              )}
               <div className="doc-layout">
                 <section className="panel index">
                   <h3>Contents · {sections.length}</h3>
                   <p className="section-order-tip"><GripVertical size={13} /> Drag sections to rearrange the document.</p>
-                  <input
-                    placeholder="Search sections…"
-                    value={search}
-                    onChange={e => SEARCH(e.target.value)}
-                  />
-                  {sections
-                    .filter(s =>
-                      s.title.toLowerCase().includes(search.toLowerCase())
-                    )
-                    .map((s, i) => (
-                      <button
-                        className={sid === s.id ? 'selected' : ''}
-                        key={s.id}
-                        draggable
-                        onDragStart={e => { DSI(s.id); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', s.id); }}
+                  <input placeholder="Search sections…" value={search} onChange={e => SEARCH(e.target.value)} />
+                  <div className="chapter-filter">
+                    <label>Filter contents by chapter
+                      <select value={exportChapter} onChange={e => EXPCHAPTER(e.target.value)}>
+                        <option>All chapters</option>
+                        {chapterOptions.map(chapter => <option key={chapter}>{chapter}</option>)}
+                      </select>
+                    </label>
+                  </div>
+                  {sections.filter(section => section.title.toLowerCase().includes(search.toLowerCase()) && (exportChapter === 'All chapters' || (section.chapter || 'Chapter 1') === exportChapter))
+                    .sort((a, b) => a.order - b.order)
+                    .map((section, index) => (
+                      <button className={sid === section.id ? 'selected' : ''} key={section.id} draggable
+                        onDragStart={e => { DSI(section.id); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', section.id); }}
                         onDragOver={e => e.preventDefault()}
-                        onDrop={e => { e.preventDefault(); const fromId = draggedSectionId || e.dataTransfer.getData('text/plain'); if (fromId && fromId !== s.id) void reorderSections(fromId, s.id); DSI(''); }}
+                        onDrop={e => { e.preventDefault(); const fromId = draggedSectionId || e.dataTransfer.getData('text/plain'); if (fromId && fromId !== section.id) void reorderSections(fromId, section.id); DSI(''); }}
                         onDragEnd={() => DSI('')}
-                        onClick={() => open(s)}
-                      >
-                        {String(i + 1).padStart(2, '0')} · {s.title}
+                        onClick={() => open(section)}>
+                        {String(index + 1).padStart(2, '0')} · {section.title}
+                        <small className="section-chapter-badge">{section.chapter || 'Chapter 1'}</small>
                       </button>
                     ))}
-                  <button
-                    className="secondary"
-                    onClick={() => {
-                      SID('');
-                      ST('');
-                      SC('');
-                    }}
-                  >
-                    + Custom section
-                  </button>
+                  <button className="secondary" onClick={() => { SID(''); ST(''); SC(''); SCHAPTER(chapterOptions[0] || 'Chapter 1'); }}>+ Custom section</button>
                 </section>
                 <section className="panel editor">
                   <div className="panel-head">
-                    <div>
-                      <h3>Edit section</h3>
-                      <small>Changes are shared with the team</small>
-                    </div>
-                    <button
-                      className="primary"
-                      onClick={saveSection}
-                      disabled={busy}
-                    >
-                      <Save size={15} /> Save
-                    </button>
+                    <div><h3>Edit section</h3><small>Changes are shared with the team</small></div>
+                    <button className="primary" onClick={saveSection} disabled={busy}><Save size={15} /> Save</button>
                   </div>
-                  <label>
-                    Section title
-                    <input
-                      value={title}
-                      onChange={e => ST(e.target.value)}
-                      placeholder="Enter section title"
-                    />
+                  <label>Section title
+                    <input value={title} onChange={e => ST(e.target.value)} placeholder="Enter section title" />
                   </label>
-                  <label>
-                    Content
-                    <textarea
-                      rows={20}
-                      value={content}
-                      onChange={e => SC(e.target.value)}
-                      placeholder="Write your research content here…"
-                    />
+                  <label>Chapter / group
+                    <input list="research-chapter-options" value={sectionChapter} onChange={e => SCHAPTER(e.target.value)} placeholder="e.g. Chapter 1" />
+                    <datalist id="research-chapter-options">{chapterOptions.map(chapter => <option key={chapter} value={chapter} />)}</datalist>
                   </label>
-                  <div className="editor-foot">
-                    {content.trim().split(/\s+/).filter(Boolean).length} words{' '}
-                    {sid && (
-                      <button className="danger" onClick={() => CONF(sid)}>
-                        Delete section
-                      </button>
-                    )}
-                  </div>
-                  <p className="tip">
-                    Writing tip: support claims with citations and explain how
-                    your study differs from previous work. Your school’s
-                    official format takes precedence.
-                  </p>
+                  <label>Content
+                    <textarea rows={20} value={content} onChange={e => SC(e.target.value)} placeholder="Write your research content here…" />
+                  </label>
+                  <div className="editor-foot">{content.trim().split(/s+/).filter(Boolean).length} words {sid && <button className="danger" onClick={() => CONF(sid)}>Delete section</button>}</div>
+                  <p className="tip">Writing tip: support claims with citations and explain how your study differs from previous work. Your school’s official format takes precedence.</p>
                 </section>
               </div>
             </>
@@ -1529,96 +1759,51 @@ function App() {
           {page === 'Meetings' && (
             <>
               <div className="heading">
-                <div>
-                  <small>TEAM CHECK-IN</small>
-                  <h1>Meetings & notes</h1>
-                  <p>
-                    Leave every meeting with decisions, owners, and next steps.
-                  </p>
-                </div>
+                <div><small>TEAM CHECK-IN</small><h1>Research meetings</h1><p>Upcoming schedules first. Open a meeting to review its agenda and shared notes.</p></div>
+                <button className="secondary" onClick={() => P('Overview')}><CalendarDays size={15} /> Dashboard calendar</button>
               </div>
-              <div className="task-layout">
-                <section className="panel">
-                  <h3>Plan a meeting</h3>
-                  <form
-                    onSubmit={e => {
-                      e.preventDefault();
-                      addMeeting();
-                    }}
-                  >
-                    <label>
-                      Meeting name
-                      <input
-                        required
-                        value={mf.title}
-                        onChange={e => MF({ ...mf, title: e.target.value })}
-                      />
-                    </label>
-                    <label>
-                      Date & time
-                      <input
-                        type="datetime-local"
-                        value={mf.date}
-                        onChange={e => MF({ ...mf, date: e.target.value })}
-                      />
-                    </label>
-                    <label>
-                      Initial notes
-                      <textarea
-                        rows={4}
-                        value={mf.notes}
-                        onChange={e => MF({ ...mf, notes: e.target.value })}
-                      />
-                    </label>
-                    <button className="primary wide">
-                      <Plus size={15} /> Create meeting
-                    </button>
-                  </form>
-                </section>
-                <section className="panel">
-                  <h3>Suggested agenda</h3>
-                  {agenda.map((a, i) => (
-                    <div className="agenda-row" key={a}>
-                      <span>{String(i + 1).padStart(2, '0')}</span>
-                      {a}
-                    </div>
-                  ))}
-                </section>
-              </div>
-              {meetings.map(m => (
-                <section className="panel" key={m.id}>
-                  <div className="panel-head">
-                    <h3>{m.title}</h3>
-                    <button className="danger" onClick={() => CONF(m.id)}>
-                      <Trash2 size={15} />
-                    </button>
+              <div className="meetings-workspace">
+                <section className="panel meeting-schedule-panel">
+                  <div className="panel-head"><div><h3>Meeting schedule · {meetings.length}</h3><small>Date and time are shown for every scheduled meeting.</small></div><CalendarDays size={18} /></div>
+                  <div className="meeting-schedule-list">
+                    {[...meetings].sort((a,b) => {
+                      if (!a.date) return 1;
+                      if (!b.date) return -1;
+                      return new Date(a.date).getTime() - new Date(b.date).getTime();
+                    }).map(meeting => (
+                      <button key={meeting.id} type="button" className={'meeting-schedule-row' + ((selectedMeeting?.id === meeting.id) ? ' selected' : '')} onClick={() => SMI(meeting.id)}>
+                        <span className="meeting-date-chip"><b>{meeting.date && !Number.isNaN(new Date(meeting.date).getTime()) ? new Date(meeting.date).toLocaleDateString([], { month:'short', day:'numeric' }) : 'TBD'}</b><small>{meeting.date && !Number.isNaN(new Date(meeting.date).getTime()) ? new Date(meeting.date).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }) : 'No time'}</small></span>
+                        <span className="meeting-schedule-copy"><b>{meeting.title}</b><small>{meetingDateLabel(meeting.date)}</small></span><ChevronRight size={15} />
+                      </button>
+                    ))}
+                    {!meetings.length && <p className="muted">No meetings scheduled yet. Create the first meeting on the right.</p>}
                   </div>
-                  <p className="muted">
-                    {m.date
-                      ? new Date(m.date).toLocaleString()
-                      : 'Date not set'}
-                  </p>
-                  {(m.agenda || []).map((a, i) => (
-                    <p key={a}>
-                      {i + 1}. {a}
-                    </p>
-                  ))}
-                  <label>
-                    Shared notes
-                    <textarea
-                      rows={4}
-                      defaultValue={m.notes}
-                      onBlur={e =>
-                        run(async () => {
-                          const n = { ...m, notes: e.target.value };
-                          await call('put', '/api/meetings/' + m.id, n);
-                          MT(a => a.map(x => (x.id === m.id ? n : x)));
-                        }, 'Notes saved.')
-                      }
-                    />
-                  </label>
+                  {selectedMeeting && (
+                    <div className="meeting-detail">
+                      <div className="panel-head"><div><h3>{selectedMeeting.title}</h3><small>{meetingDateLabel(selectedMeeting.date)}</small></div><button className="danger" onClick={() => CONF(selectedMeeting.id)}><Trash2 size={14} /> Delete</button></div>
+                      <p className="meeting-agenda-label">Agenda</p>
+                      {(selectedMeeting.agenda || []).map((item, index) => <div key={item} className="meeting-agenda-item"><span>{String(index + 1).padStart(2,'0')}</span>{item}</div>)}
+                      <label>Shared meeting notes
+                        <textarea rows={3} defaultValue={selectedMeeting.notes} key={selectedMeeting.id} onBlur={e => run(async () => {
+                          const updated = { ...selectedMeeting, notes: e.target.value };
+                          await call('put', '/api/meetings/' + selectedMeeting.id, updated);
+                          MT(list => list.map(item => item.id === updated.id ? updated : item));
+                        }, 'Meeting notes saved.')} />
+                      </label>
+                    </div>
+                  )}
                 </section>
-              ))}
+                <section className="panel meeting-create-panel">
+                  <h3>Schedule a meeting</h3><p className="muted">Choose a clear title, date and time so the session appears on the dashboard calendar.</p>
+                  <form onSubmit={e => { e.preventDefault(); addMeeting(); }}>
+                    <label>Meeting name<input required value={mf.title} onChange={e => MF({ ...mf, title: e.target.value })} placeholder="e.g. Chapter 1 review" /></label>
+                    <label>Date & time<input type="datetime-local" required value={mf.date} onChange={e => MF({ ...mf, date: e.target.value })} /></label>
+                    <label>Initial notes<textarea rows={3} value={mf.notes} onChange={e => MF({ ...mf, notes: e.target.value })} placeholder="Decisions needed, sources to bring, and goals…" /></label>
+                    <button className="primary wide" disabled={busy}><Plus size={15} /> Schedule research meeting</button>
+                  </form>
+                  <div className="meeting-prep"><small>RESEARCH MEETING CHECKLIST</small>{agenda.slice(0,4).map((item,index) => <div key={item}><span>{index+1}</span>{item}</div>)}</div>
+                </section>
+              </div>
             </>
           )}
           {page === 'Chat' && (
@@ -1742,6 +1927,7 @@ function App() {
                     </span>
                     <em>{m.role}</em>
                     {m.userId === user.userId && <small>You</small>}
+                    {isOwner && m.userId !== user.userId && <button className="secondary transfer-owner-button" onClick={() => TRANSFER(m)}><ArrowLeftRight size={13} /> Transfer ownership</button>}
                   </div>
                 ))}
               </section>
@@ -1812,63 +1998,3 @@ function App() {
                 ['Workspace name', 'title'],
                 ['Thesis title', 'researchTitle'],
                 ['School / institution', 'institution'],
-                ['Degree program', 'program'],
-              ].map(([label, key]) => (
-                <label key={key}>
-                  {label}
-                  <input required={key === 'title'} value={(wf as any)[key]} onChange={e => WF({ ...wf, [key]: e.target.value })} />
-                </label>
-              ))}
-            </> : <label>Workspace join code
-              <input required value={code} onChange={e => CODE(e.target.value.toUpperCase())} maxLength={12} placeholder="Ask the owner for the code" />
-            </label>}
-            <div className="actions">
-              <button type="button" className="secondary" onClick={() => MOD('')}>Cancel</button>
-              <button className="primary" type="submit" disabled={busy}>{busy ? 'Please wait…' : modal === 'create' ? 'Create workspace' : 'Join workspace'}</button>
-            </div>
-            {err && <p className="error">{err}</p>}
-          </form>
-        </div>
-      )}
-      {confirm && (
-        <div className="shade">
-          <div className="modal">
-            <h2>Delete this item?</h2>
-            <p>This cannot be undone.</p>
-            <div className="actions">
-              <button className="secondary" onClick={() => CONF('')}>
-                Cancel
-              </button>
-              <button
-                className="primary red"
-                onClick={() =>
-                  run(async () => {
-                    if (page === 'Document') {
-                      await call('delete', '/api/sections/' + confirm);
-                      S(a => a.filter(s => s.id !== confirm));
-                      if (sid === confirm) {
-                        SID('');
-                        ST('');
-                        SC('');
-                      }
-                    } else if (page === 'Tasks') {
-                      await call('delete', '/api/tasks/' + confirm);
-                      T(a => a.filter(t => t.id !== confirm));
-                    } else {
-                      await call('delete', '/api/meetings/' + confirm);
-                      MT(a => a.filter(m => m.id !== confirm));
-                    }
-                    CONF('');
-                  }, 'Item deleted.')
-                }
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-export default App;
