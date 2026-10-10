@@ -18,6 +18,9 @@ import {
   X,
   CheckCircle2,
   Clock3,
+  MessageCircle,
+  Send,
+  RefreshCw,
 } from 'lucide-react';
 type W = {
   id: string;
@@ -51,6 +54,14 @@ type Mt = {
   date: string;
   agenda: string[];
   notes: string;
+};
+type ChatMessage = {
+  id: string;
+  workspaceId: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  createdAt: string;
 };
 const template = [
   [
@@ -118,6 +129,8 @@ function App() {
     [sections, S] = useState<S[]>([]),
     [tasks, T] = useState<T[]>([]),
     [meetings, MT] = useState<Mt[]>([]);
+  const [chatMessages, CM] = useState<ChatMessage[]>([]);
+  const [chatDraft, CD] = useState('');
   const [page, P] = useState('Overview'),
     [loading, L] = useState(true),
     [busy, B] = useState(false),
@@ -324,6 +337,40 @@ function App() {
       MSG('Share this join code: ' + w!.joinCode);
     }
   };
+  const refreshChat = async () => {
+    if (!w) return;
+    const d = await call('get', '/api/workspaces/' + w.id + '/messages');
+    CM(d.messages || []);
+  };
+  const sendChat = () =>
+    run(async () => {
+      const messageText = chatDraft.trim();
+      if (!messageText) throw Error('Write a message first.');
+      const d = await call('post', '/api/messages', {
+        workspaceId: w!.id,
+        text: messageText,
+      });
+      CM(old => [...old, d.message].sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
+      CD('');
+    }, 'Message sent.');
+  useEffect(() => {
+    if (page !== 'Chat' || !w) return;
+    let active = true;
+    const refresh = async () => {
+      try {
+        const d = await call('get', '/api/workspaces/' + w.id + '/messages');
+        if (active) CM(d.messages || []);
+      } catch (e) {
+        if (active) E(e instanceof Error ? e.message : 'Could not refresh team chat.');
+      }
+    };
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 5000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [page, w?.id]);
   const completed = tasks.filter(t => t.status === 'Done').length,
     progress = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
   const nav = [
@@ -331,6 +378,7 @@ function App() {
     ['Document', BookOpen],
     ['Tasks', ListTodo],
     ['Meetings', CalendarDays],
+    ['Chat', MessageCircle],
     ['Team', Users],
     ['Settings', Settings],
   ] as const;
@@ -1020,6 +1068,64 @@ function App() {
                   </label>
                 </section>
               ))}
+            </>
+          )}
+          {page === 'Chat' && (
+            <>
+              <div className="heading">
+                <div>
+                  <small>TEAM CHAT</small>
+                  <h1>Group conversation</h1>
+                  <p>Talk through research questions, share quick updates, and coordinate your next steps.</p>
+                </div>
+                <button className="secondary" onClick={() => void refreshChat()}>
+                  <RefreshCw size={15} /> Refresh messages
+                </button>
+              </div>
+              <section className="panel chat-panel">
+                <div className="chat-header">
+                  <div className="chat-room-icon"><MessageCircle size={19} /></div>
+                  <div>
+                    <strong>{w.title}</strong>
+                    <small>{members.length} workspace member{members.length === 1 ? '' : 's'}</small>
+                  </div>
+                  <span className="chat-refresh-label"><span /> Updates about every 5 seconds</span>
+                </div>
+                <div className="chat-messages" aria-live="polite">
+                  {chatMessages.map(m => (
+                    <article className={'chat-message ' + (m.senderId === user.userId ? 'mine' : 'theirs')} key={m.id}>
+                      <div className="chat-message-meta">
+                        <strong>{m.senderId === user.userId ? 'You' : m.senderName}</strong>
+                        <time>{new Date(m.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</time>
+                      </div>
+                      <p>{m.text}</p>
+                    </article>
+                  ))}
+                  {!chatMessages.length && (
+                    <div className="chat-empty">
+                      <MessageCircle size={30} />
+                      <strong>Start your group conversation</strong>
+                      <p>Messages you send here are shared with everyone who has joined this workspace.</p>
+                    </div>
+                  )}
+                </div>
+                <form className="chat-composer" onSubmit={e => { e.preventDefault(); void sendChat(); }}>
+                  <textarea
+                    rows={2}
+                    maxLength={2000}
+                    value={chatDraft}
+                    onChange={e => CD(e.target.value)}
+                    placeholder="Message your research group…"
+                    aria-label="Message your research group"
+                  />
+                  <div className="chat-composer-footer">
+                    <small>{chatDraft.length}/2000 characters · Be specific and respectful.</small>
+                    <button className="primary" type="submit" disabled={busy || !chatDraft.trim()}>
+                      <Send size={15} /> Send message
+                    </button>
+                  </div>
+                </form>
+              </section>
             </>
           )}
           {page === 'Team' && (
