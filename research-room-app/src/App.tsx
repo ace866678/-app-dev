@@ -784,7 +784,7 @@ function App() {
     void run(async () => {
       if (!file.name.toLowerCase().endsWith('.docx')) throw new Error('Upload a Microsoft Word .docx sample. PDF files and older .doc formats are not supported yet.');
       if (file.size > 15 * 1024 * 1024) throw new Error('Please choose a DOCX sample smaller than 15 MB.');
-      const mammothModule: any = await import('mammoth');
+      const mammothModule: any = await import('mammoth/mammoth.browser');
       const mammoth = mammothModule.default && !mammothModule.convertToHtml ? mammothModule.default : mammothModule;
       const options = { styleMap: ["p[style-name='Chapter Title'] => h1:fresh", "p[style-name='Chapter Heading'] => h1:fresh", "p[style-name='Section Heading'] => h2:fresh"] };
       const input = { arrayBuffer: await file.arrayBuffer() };
