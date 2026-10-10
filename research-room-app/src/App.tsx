@@ -663,7 +663,7 @@ function App() {
                   required
                   value={authPassword}
                   onChange={e => APASSWORD(e.target.value)}
-                  placeholder="At least 6 characters"
+                  placeholder={authMode === 'signin' ? 'Enter your password' : 'At least 6 characters'}
                 />
               </label>
               <button className="primary wide" type="submit" disabled={busy}>
