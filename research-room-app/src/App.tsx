@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { auth, api } from '@appdeploy/client';
+import { supabase } from './supabase';
 import {
   BookOpen,
   LayoutDashboard,
@@ -121,6 +121,11 @@ const agenda = [
   'Set deadlines and agree how progress will be reported',
 ];
 const date = (s?: string) => (s ? s.slice(0, 10) : 'No due date');
+const userView = (u: any) => ({
+  userId: u.id,
+  email: u.email || '',
+  name: u.user_metadata?.full_name || u.user_metadata?.name || u.email || 'Researcher',
+});
 function App() {
   const [user, U] = useState<any>(null),
     [spaces, SP] = useState<W[]>([]),
@@ -131,6 +136,9 @@ function App() {
     [meetings, MT] = useState<Mt[]>([]);
   const [chatMessages, CM] = useState<ChatMessage[]>([]);
   const [chatDraft, CD] = useState('');
+  const [authEmail, AEMAIL] = useState('');
+  const [authPassword, APASSWORD] = useState('');
+  const [authMode, AMODE] = useState<'signin' | 'signup'>('signin');
   const [page, P] = useState('Overview'),
     [loading, L] = useState(true),
     [busy, B] = useState(false),
@@ -163,20 +171,194 @@ function App() {
     }),
     [search, SEARCH] = useState(''),
     [confirm, CONF] = useState('');
+  const unwrap = (result: any) => {
+    if (result.error) throw new Error(result.error.message || 'Supabase request failed.');
+    return result.data;
+  };
+  const currentUser = async () => {
+    const result = await supabase.auth.getUser();
+    if (result.error) throw result.error;
+    if (!result.data.user) throw new Error('Your session has expired. Please sign in again.');
+    return result.data.user;
+  };
+  const camelize = (value: any): any => {
+    if (Array.isArray(value)) return value.map(camelize);
+    if (!value || typeof value !== 'object') return value;
+    return Object.fromEntries(
+      Object.entries(value).map(([key, val]) => [
+        key.replace(/_([a-z])/g, (_match, char: string) => char.toUpperCase()),
+        camelize(val),
+      ])
+    );
+  };
   const call = async (
     method: 'get' | 'post' | 'put' | 'delete',
     url: string,
     data?: any
-  ) => {
-    const r =
-      method === 'get'
-        ? await api.get(url)
-        : method === 'post'
-          ? await api.post(url, data)
-          : method === 'put'
-            ? await api.put(url, data)
-            : await api.delete(url);
-    return r.data;
+  ): Promise<any> => {
+    if (method === 'get' && url === '/api/workspaces') {
+      const user = await currentUser();
+      const memberRows = unwrap(await supabase.from('research_members').select('workspace_id').eq('user_id', user.id)) || [];
+      const ids = [...new Set(memberRows.map((row: any) => row.workspace_id))];
+      if (!ids.length) return { workspaces: [] };
+      const rows = unwrap(await supabase.from('research_workspaces').select('*').in('id', ids).order('created_at', { ascending: false })) || [];
+      return { workspaces: camelize(rows) };
+    }
+
+    if (method === 'post' && url === '/api/workspaces') {
+      const row = unwrap(await supabase.rpc('create_research_workspace', {
+        p_title: data.title,
+        p_research_title: data.researchTitle || '',
+        p_institution: data.institution || '',
+        p_program: data.program || '',
+      }));
+      return { workspace: camelize(row) };
+    }
+
+    if (method === 'post' && url === '/api/workspaces/join') {
+      const row = unwrap(await supabase.rpc('join_research_workspace', { p_join_code: data.joinCode }));
+      return { workspace: camelize(row) };
+    }
+
+    const messagesPath = url.match(/^\/api\/workspaces\/([^/]+)\/messages$/);
+    if (method === 'get' && messagesPath) {
+      const rows = unwrap(await supabase.from('research_messages').select('*').eq('workspace_id', messagesPath[1]).order('created_at', { ascending: true }).limit(200)) || [];
+      return { messages: camelize(rows) };
+    }
+
+    if (method === 'post' && url === '/api/messages') {
+      const user = await currentUser();
+      const row = unwrap(await supabase.from('research_messages').insert({
+        workspace_id: data.workspaceId,
+        sender_id: user.id,
+        sender_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'Researcher',
+        text: String(data.text || '').trim(),
+      }).select('*').single());
+      return { message: camelize(row) };
+    }
+
+    const workspacePath = url.match(/^\/api\/workspaces\/([^/]+)$/);
+    if (method === 'get' && workspacePath) {
+      const id = workspacePath[1];
+      const [workspace, members, sections, tasks, meetings] = await Promise.all([
+        supabase.from('research_workspaces').select('*').eq('id', id).single(),
+        supabase.from('research_members').select('*').eq('workspace_id', id).order('joined_at', { ascending: true }),
+        supabase.from('research_sections').select('*').eq('workspace_id', id).order('order', { ascending: true }),
+        supabase.from('research_tasks').select('*').eq('workspace_id', id).order('created_at', { ascending: false }),
+        supabase.from('research_meetings').select('*').eq('workspace_id', id).order('created_at', { ascending: false }),
+      ]);
+      return {
+        workspace: camelize(unwrap(workspace)),
+        members: camelize(unwrap(members) || []),
+        sections: camelize(unwrap(sections) || []),
+        tasks: camelize(unwrap(tasks) || []),
+        meetings: camelize(unwrap(meetings) || []),
+      };
+    }
+
+    if (method === 'put' && workspacePath) {
+      const row = unwrap(await supabase.from('research_workspaces').update({
+        title: data.title,
+        research_title: data.researchTitle || '',
+        institution: data.institution || '',
+        program: data.program || '',
+      }).eq('id', workspacePath[1]).select('*').single());
+      return { workspace: camelize(row) };
+    }
+
+    const sectionPath = url.match(/^\/api\/sections\/([^/]+)$/);
+    if (method === 'post' && url === '/api/sections') {
+      const user = await currentUser();
+      const row = unwrap(await supabase.from('research_sections').insert({
+        workspace_id: data.workspaceId,
+        title: String(data.title || '').trim(),
+        content: data.content || '',
+        order: Number(data.order) || 0,
+        updated_by: user.id,
+      }).select('*').single());
+      return { section: camelize(row) };
+    }
+    if (method === 'put' && sectionPath) {
+      const user = await currentUser();
+      const row = unwrap(await supabase.from('research_sections').update({
+        title: data.title,
+        content: data.content || '',
+        order: Number(data.order) || 0,
+        updated_by: user.id,
+        updated_at: new Date().toISOString(),
+      }).eq('id', sectionPath[1]).select('*').single());
+      return { section: camelize(row) };
+    }
+    if (method === 'delete' && sectionPath) {
+      const result = await supabase.from('research_sections').delete().eq('id', sectionPath[1]);
+      if (result.error) throw new Error(result.error.message);
+      return { deleted: true };
+    }
+
+    const taskPath = url.match(/^\/api\/tasks\/([^/]+)$/);
+    if (method === 'post' && url === '/api/tasks') {
+      const user = await currentUser();
+      const row = unwrap(await supabase.from('research_tasks').insert({
+        workspace_id: data.workspaceId,
+        title: String(data.title || '').trim(),
+        description: data.description || '',
+        assignee_id: data.assigneeId || null,
+        assignee_name: data.assigneeName || '',
+        due_date: data.dueDate || '',
+        priority: data.priority || 'Medium',
+        status: data.status || 'To do',
+        created_by: user.id,
+      }).select('*').single());
+      return { task: camelize(row) };
+    }
+    if (method === 'put' && taskPath) {
+      const row = unwrap(await supabase.from('research_tasks').update({
+        title: data.title,
+        description: data.description || '',
+        assignee_id: data.assigneeId || null,
+        assignee_name: data.assigneeName || '',
+        due_date: data.dueDate || '',
+        priority: data.priority || 'Medium',
+        status: data.status || 'To do',
+        updated_at: new Date().toISOString(),
+      }).eq('id', taskPath[1]).select('*').single());
+      return { task: camelize(row) };
+    }
+    if (method === 'delete' && taskPath) {
+      const result = await supabase.from('research_tasks').delete().eq('id', taskPath[1]);
+      if (result.error) throw new Error(result.error.message);
+      return { deleted: true };
+    }
+
+    const meetingPath = url.match(/^\/api\/meetings\/([^/]+)$/);
+    if (method === 'post' && url === '/api/meetings') {
+      const user = await currentUser();
+      const row = unwrap(await supabase.from('research_meetings').insert({
+        workspace_id: data.workspaceId,
+        title: String(data.title || '').trim(),
+        date: data.date || '',
+        agenda: Array.isArray(data.agenda) ? data.agenda : [],
+        notes: data.notes || '',
+        created_by: user.id,
+      }).select('*').single());
+      return { meeting: camelize(row) };
+    }
+    if (method === 'put' && meetingPath) {
+      const row = unwrap(await supabase.from('research_meetings').update({
+        title: data.title,
+        date: data.date || '',
+        agenda: Array.isArray(data.agenda) ? data.agenda : [],
+        notes: data.notes || '',
+      }).eq('id', meetingPath[1]).select('*').single());
+      return { meeting: camelize(row) };
+    }
+    if (method === 'delete' && meetingPath) {
+      const result = await supabase.from('research_meetings').delete().eq('id', meetingPath[1]);
+      if (result.error) throw new Error(result.error.message);
+      return { deleted: true };
+    }
+
+    throw new Error('Unsupported research data request: ' + method.toUpperCase() + ' ' + url);
   };
   const reloadSpaces = async () => {
     const d = await call('get', '/api/workspaces');
@@ -191,19 +373,38 @@ function App() {
     MT(d.meetings || []);
   };
   useEffect(() => {
+    let active = true;
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return;
+      const nextUser = session?.user;
+      U(nextUser ? userView(nextUser) : null);
+      if (nextUser) {
+        void Promise.resolve().then(() => reloadSpaces()).catch(e => {
+          if (active) E(e instanceof Error ? e.message : 'Could not load workspaces.');
+        });
+      } else {
+        SP([]);
+        W(null);
+      }
+    });
     (async () => {
       try {
-        const u = await auth.getUser();
-        if (u) {
-          U(u);
+        const { data, error } = await supabase.auth.getUser();
+        if (error) throw error;
+        if (data.user && active) {
+          U(userView(data.user));
           await reloadSpaces();
         }
       } catch (e) {
-        E(String(e));
+        if (active) E(e instanceof Error ? e.message : String(e));
       } finally {
-        L(false);
+        if (active) L(false);
       }
     })();
+    return () => {
+      active = false;
+      authListener.subscription.unsubscribe();
+    };
   }, []);
   const run = async (fn: () => Promise<void>, ok?: string) => {
     B(true);
@@ -219,12 +420,35 @@ function App() {
   };
   const signin = () =>
     run(async () => {
-      const r = await auth.signIn({ scope: 'openid email profile' });
-      U(r.user);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: authEmail.trim(),
+        password: authPassword,
+      });
+      if (error) throw error;
+      if (!data.user) throw new Error('Sign-in did not return a user.');
+      U(userView(data.user));
       await reloadSpaces();
     });
+  const signup = () =>
+    run(async () => {
+      if (authPassword.length < 6) throw new Error('Use a password with at least 6 characters.');
+      const { data, error } = await supabase.auth.signUp({
+        email: authEmail.trim(),
+        password: authPassword,
+        options: { data: { name: authEmail.trim().split('@')[0] } },
+      });
+      if (error) throw error;
+      if (!data.session || !data.user) {
+        AMODE('signin');
+        MSG('Account created. Check your email to confirm it, then sign in.');
+        return;
+      }
+      U(userView(data.user));
+      await reloadSpaces();
+    }, 'Account created.');
   const signout = async () => {
-    await auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) E(error.message);
     U(null);
     W(null);
     SP([]);
@@ -415,11 +639,40 @@ function App() {
               Sign in to open your group's workspace or create one for your
               proposal.
             </p>
-            <button className="primary wide" onClick={signin} disabled={busy}>
-              {busy ? 'Connecting…' : 'Continue to sign in'}{' '}
-              <ChevronRight size={16} />
-            </button>
+            <form className="auth-form" onSubmit={e => { e.preventDefault(); void (authMode === 'signin' ? signin() : signup()); }}>
+              <label>
+                Email address
+                <input
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={authEmail}
+                  onChange={e => AEMAIL(e.target.value)}
+                  placeholder="you@example.com"
+                />
+              </label>
+              <label>
+                Password
+                <input
+                  type="password"
+                  autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
+                  minLength={6}
+                  required
+                  value={authPassword}
+                  onChange={e => APASSWORD(e.target.value)}
+                  placeholder="At least 6 characters"
+                />
+              </label>
+              <button className="primary wide" type="submit" disabled={busy}>
+                {busy ? 'Please wait…' : authMode === 'signin' ? 'Sign in' : 'Create account'}
+                <ChevronRight size={16} />
+              </button>
+              <button className="secondary wide" type="button" disabled={busy} onClick={() => { AMODE(authMode === 'signin' ? 'signup' : 'signin'); E(''); MSG(''); }}>
+                {authMode === 'signin' ? 'New here? Create an account' : 'Already registered? Sign in'}
+              </button>
+            </form>
             {err && <p className="error">{err}</p>}
+            {msg && <p className="muted">{msg}</p>}
             <small>
               Each member signs in separately. Your team’s names and content are
               entered by your team.
