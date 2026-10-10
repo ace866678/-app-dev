@@ -112,14 +112,23 @@
       "workspace join code",
       "shared workspace access",
       "authorization",
-      "cross-member document visibility"
+      "cross-member document visibility",
+      "joining member sees shared sections and meetings",
+      "custom meeting agenda create and edit",
+      "realtime notifications for other members",
+      "right-side topic list",
+      "emoji insertion"
     ],
     "description": "Verifies a second member can join by code and access the workspace's shared proposal sections.",
     "steps": [
       "Actor A creates a workspace and adds a proposal section",
       "Actor B signs in and joins using Actor A's code",
-      "Actor B opens the document workspace"
+      "Actor B opens the document workspace",
+      "Join an existing workspace from a second account and open Document",
+      "Create a meeting with a custom agenda and update one agenda point",
+      "Send a chat message and confirm the other member receives a notification",
+      "Choose a topic from the right-hand list and insert an emoji"
     ],
-    "expected": "Actor B can view the shared section, while an invalid code is rejected."
+    "expected": "Joining members see the same workspace content; custom agendas persist; other members receive notifications; chat topics are visible on the right and emojis can be inserted."
   }
 ]
