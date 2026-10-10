@@ -7,15 +7,18 @@
       "authentication",
       "workspace creation",
       "database create/read",
-      "member join code"
+      "member join code",
+      "restore last active workspace after refresh"
     ],
     "description": "Verifies a signed-in researcher can create a workspace and see its saved thesis settings.",
     "steps": [
       "Sign in using the sign-in button",
       "Create a workspace with a title and institution",
-      "Open the workspace dashboard"
+      "Open the workspace dashboard",
+      "Refresh the page while still signed in",
+      "Verify the previously created workspace opens automatically"
     ],
-    "expected": "The workspace title and generated join code appear in the dashboard."
+    "expected": "The workspace title and generated join code remain visible, and refreshing restores the same saved workspace instead of showing the new-workspace setup screen."
   },
   {
     "name": "Edit and retain thesis proposal sections",
@@ -43,16 +46,20 @@
       "member assignment",
       "task status",
       "due dates",
-      "required field validation"
+      "required field validation",
+      "dashboard upcoming deadlines",
+      "searchable location map"
     ],
     "description": "Verifies a member can create, assign, update, and retain a task while empty task titles are blocked.",
     "steps": [
       "Open Tasks and create a task with a title and due date",
       "Assign the task to a workspace member and set status to In progress",
+      "Return to Overview and verify the task and its due date appear in Upcoming deadlines",
+      "Search for a school or meeting place in Research location map",
       "Try to submit a task with an empty title",
       "Refresh and reopen Tasks"
     ],
-    "expected": "The saved task retains its details, and an empty task title is rejected."
+    "expected": "The task retains its details after refresh, its active deadline appears on the Overview dashboard, the map accepts a place search, and an empty task title is rejected."
   },
   {
     "name": "Chat with group members and retain messages",
