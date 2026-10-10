@@ -374,25 +374,24 @@ function App() {
   };
   useEffect(() => {
     let active = true;
+    // Keep the auth callback synchronous. Calling Supabase methods from inside
+    // onAuthStateChange can contend with the auth client's internal lock and
+    // lead to errors such as "Auth session missing!".
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!active) return;
       const nextUser = session?.user;
       U(nextUser ? userView(nextUser) : null);
-      if (nextUser) {
-        void Promise.resolve().then(() => reloadSpaces()).catch(e => {
-          if (active) E(e instanceof Error ? e.message : 'Could not load workspaces.');
-        });
-      } else {
+      if (!nextUser) {
         SP([]);
         W(null);
       }
     });
     (async () => {
       try {
-        const { data, error } = await supabase.auth.getUser();
+        const { data, error } = await supabase.auth.getSession();
         if (error) throw error;
-        if (data.user && active) {
-          U(userView(data.user));
+        if (data.session?.user && active) {
+          U(userView(data.session.user));
           await reloadSpaces();
         }
       } catch (e) {
