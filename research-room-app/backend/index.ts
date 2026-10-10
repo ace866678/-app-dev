@@ -360,4 +360,47 @@ export const handler = router({
         : error('Could not delete meeting.', 500);
     },
   ],
+  'GET /api/workspaces/:id/messages': [
+    requireAuth(),
+    async ({ user, params }) => {
+      try {
+        await requireWorkspace(user!.userId, params.id);
+      } catch {
+        return error('Workspace access denied.', 403);
+      }
+      const result = await db.list<R>('research_messages', {
+        limit: 200,
+        filter: { workspaceId: params.id },
+      });
+      const messages = result.items.sort((a, b) =>
+        String(a.createdAt).localeCompare(String(b.createdAt))
+      );
+      return json({ messages });
+    },
+  ],
+  'POST /api/messages': [
+    requireAuth(),
+    async ({ user, body }) => {
+      const b = (body || {}) as R;
+      const workspaceId = text(b.workspaceId, 100);
+      const messageText = text(b.text, 2000);
+      if (!messageText) return error('Message cannot be empty.', 400);
+      try {
+        await requireWorkspace(user!.userId, workspaceId);
+      } catch {
+        return error('Workspace access denied.', 403);
+      }
+      const rec = {
+        workspaceId,
+        senderId: user!.userId,
+        senderName: text(user!.name, 120) || text(user!.email, 120) || 'Researcher',
+        text: messageText,
+        createdAt: new Date().toISOString(),
+      };
+      const [id] = await db.add('research_messages', [rec]);
+      return id
+        ? json({ message: { ...rec, id } }, 201)
+        : error('Could not send message.', 500);
+    },
+  ],
 });
