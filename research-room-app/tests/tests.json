@@ -10,7 +10,10 @@
       "member join code",
       "restore last active workspace after refresh",
       "multiple workspace creation",
-      "workspace switcher"
+      "workspace switcher",
+      "workspace calendar",
+      "upcoming meeting dashboard summary",
+      "ownership transfer"
     ],
     "description": "Verifies a signed-in researcher can create a workspace and see its saved thesis settings.",
     "steps": [
@@ -21,9 +24,12 @@
       "Verify the previously created workspace opens automatically",
       "Create a second workspace from the active workspace",
       "Switch between the two workspaces using the selector",
-      "Refresh and verify the selected workspace is restored"
+      "Refresh and verify the selected workspace is restored",
+      "Schedule a research meeting with a date and time",
+      "Confirm its date and time appear on the dashboard calendar",
+      "Transfer ownership to another workspace member and confirm the new owner is shown"
     ],
-    "expected": "A signed-in user can create multiple workspaces, switch between them and reopen the last selected workspace after refresh."
+    "expected": "Workspaces and members remain accessible; scheduled meetings appear on the dashboard calendar and ownership transfers only to an existing workspace member."
   },
   {
     "name": "Edit and retain thesis proposal sections",
@@ -34,7 +40,10 @@
       "saved content persistence",
       "document template",
       "DOCX export",
-      "drag-and-drop section ordering"
+      "drag-and-drop section ordering",
+      "chapter-specific DOCX export",
+      "chapter grouping",
+      "sample DOCX template import"
     ],
     "description": "Verifies editing a proposal section persists after navigating away and returning.",
     "steps": [
@@ -43,9 +52,12 @@
       "Save changes and navigate to the dashboard",
       "Reopen the Introduction section",
       "Drag a section above another section and wait for the saved confirmation",
-      "Export the document as a DOCX file"
+      "Export the document as a DOCX file",
+      "Assign sections to Chapter 1 and Chapter 2",
+      "Select Chapter 1 and export the document",
+      "Upload a sample DOCX and review detected headings before importing"
     ],
-    "expected": "Sections can be reordered with drag and drop, the new order remains saved, and the browser downloads a Word-compatible .docx of the ordered document."
+    "expected": "The export contains only the selected chapter's sections, and the sample DOCX import previews detected headings and assigns them to chapters before adding sections."
   },
   {
     "name": "Create and update tasks with validation",
