@@ -126,6 +126,13 @@ const userView = (u: any) => ({
   email: u.email || '',
   name: u.user_metadata?.full_name || u.user_metadata?.name || u.email || 'Researcher',
 });
+const getAuthRedirectUrl = () => {
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1') {
+    return 'https://research-room-sable.vercel.app';
+  }
+  return window.location.origin;
+};
 function App() {
   const [user, U] = useState<any>(null),
     [spaces, SP] = useState<W[]>([]),
@@ -176,10 +183,11 @@ function App() {
     return result.data;
   };
   const currentUser = async () => {
-    const result = await supabase.auth.getUser();
+    const result = await supabase.auth.getSession();
     if (result.error) throw result.error;
-    if (!result.data.user) throw new Error('Your session has expired. Please sign in again.');
-    return result.data.user;
+    const sessionUser = result.data.session?.user;
+    if (!sessionUser) throw new Error('Your session is missing or expired. Please sign in again.');
+    return sessionUser;
   };
   const camelize = (value: any): any => {
     if (Array.isArray(value)) return value.map(camelize);
@@ -374,32 +382,41 @@ function App() {
   };
   useEffect(() => {
     let active = true;
-    // Keep the auth callback synchronous. Calling Supabase methods from inside
-    // onAuthStateChange can contend with the auth client's internal lock and
-    // lead to errors such as "Auth session missing!".
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    let loadedForUser = '';
+    // Keep Supabase's auth callback synchronous. Queue data fetching after it
+    // returns so it cannot contend with the auth client's internal lock.
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (!active) return;
       const nextUser = session?.user;
       U(nextUser ? userView(nextUser) : null);
+
       if (!nextUser) {
+        loadedForUser = '';
         SP([]);
         W(null);
+        L(false);
+        return;
       }
+
+      if (
+        (event !== 'INITIAL_SESSION' && event !== 'SIGNED_IN') ||
+        loadedForUser === nextUser.id
+      ) {
+        return;
+      }
+
+      loadedForUser = nextUser.id;
+      window.setTimeout(() => {
+        if (!active) return;
+        void reloadSpaces()
+          .catch(e => {
+            if (active) E(e instanceof Error ? e.message : 'Could not load workspaces.');
+          })
+          .finally(() => {
+            if (active) L(false);
+          });
+      }, 0);
     });
-    (async () => {
-      try {
-        const { data, error } = await supabase.auth.getSession();
-        if (error) throw error;
-        if (data.session?.user && active) {
-          U(userView(data.session.user));
-          await reloadSpaces();
-        }
-      } catch (e) {
-        if (active) E(e instanceof Error ? e.message : String(e));
-      } finally {
-        if (active) L(false);
-      }
-    })();
     return () => {
       active = false;
       authListener.subscription.unsubscribe();
@@ -426,7 +443,14 @@ function App() {
       if (error) throw error;
       if (!data.user) throw new Error('Sign-in did not return a user.');
       U(userView(data.user));
-      await reloadSpaces();
+    });
+  const signInWithGoogle = () =>
+    run(async () => {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: getAuthRedirectUrl() },
+      });
+      if (error) throw error;
     });
   const signup = () =>
     run(async () => {
@@ -436,7 +460,7 @@ function App() {
         password: authPassword,
         options: {
           data: { name: authEmail.trim().split('@')[0] },
-          emailRedirectTo: window.location.origin,
+          emailRedirectTo: getAuthRedirectUrl(),
         },
       });
       if (error) throw error;
@@ -668,6 +692,11 @@ function App() {
               <button className="primary wide" type="submit" disabled={busy}>
                 {busy ? 'Please wait…' : authMode === 'signin' ? 'Sign in' : 'Create account'}
                 <ChevronRight size={16} />
+              </button>
+              <div className="auth-divider"><span>or continue with</span></div>
+              <button className="google-auth wide" type="button" disabled={busy} onClick={() => void signInWithGoogle()}>
+                <span className="google-g" aria-hidden="true">G</span>
+                Continue with Google
               </button>
               <button className="secondary wide" type="button" disabled={busy} onClick={() => { AMODE(authMode === 'signin' ? 'signup' : 'signin'); E(''); MSG(''); }}>
                 {authMode === 'signin' ? 'New here? Create an account' : 'Already registered? Sign in'}
