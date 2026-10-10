@@ -172,8 +172,7 @@ small {
   color: #b13245 !important;
   font-size: 12px !important;
 }
-
-/* Purpose-built form fields for the sign-in and account creation screen. */
+/* Consistent, modern sign-in and account creation fields. */
 .auth-form {
   display: grid;
   gap: 13px;
@@ -289,7 +288,6 @@ small {
 .auth-box > small {
   margin-top: 18px;
 }
-
 .welcome {
   min-height: 100vh;
   background: #f7f8fc;
@@ -1344,3 +1342,35 @@ small {
     margin-left: 27px;
   }
 }
+
+
+/* Multi-workspace navigation */
+.space-label select { display:block; width:100%; margin-top:7px; padding:8px 7px; border:1px solid #e8e7f6; border-radius:7px; background:#fff; color:#4b4f65; font:700 11px 'DM Sans'; outline:none; }
+.workspace-action { display:flex; width:100%; align-items:center; justify-content:flex-start; gap:6px; margin-top:8px; padding:7px 6px; border:0; border-radius:7px; background:#eeedff; color:#5e53c4; font:700 10px 'DM Sans'; cursor:pointer; }
+.workspace-action.secondary-action { background:#fff; color:#777d92; border:1px solid #e6e7f0; }
+.document-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.section-order-tip { display:flex; align-items:center; gap:5px; color:#9297a9; font-size:9px; line-height:1.5; }
+.index > button[draggable="true"] { cursor:grab; }
+.index > button[draggable="true"]:active { cursor:grabbing; }
+.owner-restricted { border-color:#ebe9fb; background:#fbfaff; }
+.owner-restricted h3 { margin-top:0; }
+.owner-restricted p, .owner-restricted small { display:block; color:#7d8196; font-size:11px; line-height:1.8; }
+.owner-restricted small { margin-top:14px; color:#7770cb; }
+.chat-tools { display:grid; grid-template-columns:minmax(0,1fr) 220px; gap:12px; padding:14px 20px; border-bottom:1px solid var(--line); background:#fff; }
+.chat-search { min-width:0; display:flex; align-items:center; gap:8px; padding:0 11px; border:1px solid #e2e4ef; border-radius:9px; color:#9297a9; }
+.chat-search input { width:100%; min-width:0; padding:10px 0; border:0; outline:0; color:var(--ink); font:11px 'DM Sans'; }
+.chat-filter, .chat-topic-picker { display:flex; flex-direction:column; gap:5px; color:#71768b; font-size:10px; font-weight:700; }
+.chat-filter select, .chat-topic-picker select { min-width:0; border:1px solid #e2e4ef; border-radius:8px; padding:9px 10px; background:#fff; color:#454a60; font:11px 'DM Sans'; }
+.chat-topic-tag { padding:3px 6px; border-radius:5px; background:#eeedff; color:#665bd0; font-size:8px; line-height:1.5; }
+.chat-prompts { padding:14px 20px; background:#fff; border-top:1px solid var(--line); }
+.chat-prompts > small { display:block; margin-bottom:9px; color:#999eb0; font-size:9px; font-weight:800; letter-spacing:.7px; }
+.chat-prompts > div { display:flex; flex-wrap:wrap; gap:7px; }
+.chat-prompts button { border:1px solid #e7e5fb; border-radius:20px; padding:7px 10px; background:#faf9ff; color:#655ac2; font:600 10px 'DM Sans'; cursor:pointer; }
+.chat-topic-picker { margin-bottom:12px; }
+.chat-composer textarea { width:100%; display:block; }
+@media (max-width:760px) { .document-actions { width:100%; } .document-actions button { flex:1; } .chat-tools { grid-template-columns:1fr; padding:13px; } .chat-prompts { padding:13px; } }
+
+.task-deadline-edit { display:flex; flex-direction:column; gap:6px; margin:11px 0; color:#62677d; font-size:10px; font-weight:700; }
+.task-deadline-edit input { border:1px solid #e0e3ed; border-radius:8px; padding:9px 10px; color:var(--ink); font:11px 'DM Sans'; }
+.task-assignee-readonly { display:flex; flex-direction:column; justify-content:center; gap:5px; min-width:0; color:#62677d; font-size:10px; }
+.task-assignee-readonly b { color:var(--ink); font-size:11px; overflow-wrap:anywhere; }
