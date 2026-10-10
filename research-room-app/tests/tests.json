@@ -8,7 +8,9 @@
       "workspace creation",
       "database create/read",
       "member join code",
-      "restore last active workspace after refresh"
+      "restore last active workspace after refresh",
+      "multiple workspace creation",
+      "workspace switcher"
     ],
     "description": "Verifies a signed-in researcher can create a workspace and see its saved thesis settings.",
     "steps": [
@@ -16,9 +18,12 @@
       "Create a workspace with a title and institution",
       "Open the workspace dashboard",
       "Refresh the page while still signed in",
-      "Verify the previously created workspace opens automatically"
+      "Verify the previously created workspace opens automatically",
+      "Create a second workspace from the active workspace",
+      "Switch between the two workspaces using the selector",
+      "Refresh and verify the selected workspace is restored"
     ],
-    "expected": "The workspace title and generated join code remain visible, and refreshing restores the same saved workspace instead of showing the new-workspace setup screen."
+    "expected": "A signed-in user can create multiple workspaces, switch between them and reopen the last selected workspace after refresh."
   },
   {
     "name": "Edit and retain thesis proposal sections",
@@ -27,39 +32,43 @@
       "thesis section editor",
       "database update",
       "saved content persistence",
-      "document template"
+      "document template",
+      "DOCX export",
+      "drag-and-drop section ordering"
     ],
     "description": "Verifies editing a proposal section persists after navigating away and returning.",
     "steps": [
       "Open the thesis document",
       "Edit the Introduction section",
       "Save changes and navigate to the dashboard",
-      "Reopen the Introduction section"
+      "Reopen the Introduction section",
+      "Drag a section above another section and wait for the saved confirmation",
+      "Export the document as a DOCX file"
     ],
-    "expected": "The saved introduction text is still present."
+    "expected": "Sections can be reordered with drag and drop, the new order remains saved, and the browser downloads a Word-compatible .docx of the ordered document."
   },
   {
     "name": "Create and update tasks with validation",
     "viewport": "mobile",
     "covers": [
-      "task CRUD",
       "member assignment",
       "task status",
       "due dates",
       "required field validation",
       "dashboard upcoming deadlines",
-      "searchable location map"
+      "searchable location map",
+      "owner-only task creation",
+      "owner-only deadline changes"
     ],
-    "description": "Verifies a member can create, assign, update, and retain a task while empty task titles are blocked.",
+    "description": "Verifies owners can create tasks and assign deadlines while members can view tasks and update status without creating tasks or deadlines.",
     "steps": [
-      "Open Tasks and create a task with a title and due date",
-      "Assign the task to a workspace member and set status to In progress",
-      "Return to Overview and verify the task and its due date appear in Upcoming deadlines",
-      "Search for a school or meeting place in Research location map",
-      "Try to submit a task with an empty title",
+      "Actor A signs in as workspace owner and creates a task with a due date",
+      "Actor B signs in as a member and verifies the task and deadline are visible",
+      "Actor B checks that task creation is owner-only",
+      "Actor A marks the task In progress and checks the dashboard deadline list",
       "Refresh and reopen Tasks"
     ],
-    "expected": "The task retains its details after refresh, its active deadline appears on the Overview dashboard, the map accepts a place search, and an empty task title is rejected."
+    "expected": "Only the owner can create tasks or set/change deadlines. Members can see the shared task and update status; task deadlines persist after refresh."
   },
   {
     "name": "Chat with group members and retain messages",
@@ -69,16 +78,20 @@
       "authenticated message create/read",
       "workspace-scoped authorization",
       "cross-member updates",
-      "message persistence"
+      "message persistence",
+      "research discussion topics",
+      "message filtering and search"
     ],
     "description": "Verifies workspace members can send messages and see each other's saved messages.",
     "steps": [
       "Actor A creates a workspace and shares its join code",
       "Actor B signs in and joins that workspace",
       "Actor A opens Chat and sends a message",
-      "Actor B opens Chat or refreshes messages"
+      "Actor B opens Chat or refreshes messages",
+      "Choose Literature Review as the topic and send a message",
+      "Filter by Literature Review and search for a keyword"
     ],
-    "expected": "The message appears with its sender identity for both members and remains available after refresh."
+    "expected": "Messages retain their topic, members can filter/search research discussions, and messages persist across refresh."
   },
   {
     "name": "Join a workspace and read shared research content",
