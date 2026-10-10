@@ -21,6 +21,7 @@ import {
   MessageCircle,
   Send,
   RefreshCw,
+  MapPin,
 } from 'lucide-react';
 type W = {
   id: string;
@@ -121,6 +122,18 @@ const agenda = [
   'Set deadlines and agree how progress will be reported',
 ];
 const date = (s?: string) => (s ? s.slice(0, 10) : 'No due date');
+const deadlineLabel = (s?: string) => {
+  if (!s) return 'No deadline';
+  const due = new Date(s.slice(0, 10) + 'T00:00:00');
+  if (Number.isNaN(due.getTime())) return s;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Math.round((due.getTime() - today.getTime()) / 86400000);
+  if (days < 0) return `${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} overdue`;
+  if (days === 0) return 'Due today';
+  if (days === 1) return 'Due tomorrow';
+  return `Due in ${days} days`;
+};
 const userView = (u: any) => ({
   userId: u.id,
   email: u.email || '',
@@ -178,6 +191,8 @@ function App() {
     }),
     [search, SEARCH] = useState(''),
     [confirm, CONF] = useState('');
+  const [mapQuery, MAPQ] = useState('Philippines');
+  const [activeMapQuery, AMQ] = useState('Philippines');
   const unwrap = (result: any) => {
     if (result.error) throw new Error(result.error.message || 'Supabase request failed.');
     return result.data;
@@ -370,10 +385,46 @@ function App() {
   };
   const reloadSpaces = async () => {
     const d = await call('get', '/api/workspaces');
-    SP(d.workspaces || []);
+    const availableSpaces = d.workspaces || [];
+    SP(availableSpaces);
+    if (!availableSpaces.length) {
+      W(null);
+      M([]);
+      S([]);
+      T([]);
+      MT([]);
+      CM([]);
+      return;
+    }
+
+    const sessionUser = await currentUser();
+    const selectionKey = 'research-room:selected-workspace:' + sessionUser.id;
+    let savedWorkspaceId = '';
+    try {
+      savedWorkspaceId = window.localStorage.getItem(selectionKey) || '';
+    } catch {
+      // Continue using the first available workspace if browser storage is blocked.
+    }
+    const selected = availableSpaces.find((space: W) => space.id === savedWorkspaceId) || availableSpaces[0];
+    await load(selected);
   };
   const load = async (x: W) => {
     const d = await call('get', '/api/workspaces/' + x.id);
+    const sessionUser = await currentUser();
+    try {
+      window.localStorage.setItem('research-room:selected-workspace:' + sessionUser.id, x.id);
+    } catch {
+      // The database remains the source of truth when browser storage is unavailable.
+    }
+    const savedMapQuery = (() => {
+      try {
+        return window.localStorage.getItem('research-room-map:' + x.id) || d.workspace.institution || 'Philippines';
+      } catch {
+        return d.workspace.institution || 'Philippines';
+      }
+    })();
+    MAPQ(savedMapQuery);
+    AMQ(savedMapQuery);
     W(d.workspace);
     M(d.members || []);
     S((d.sections || []).sort((a: S, b: S) => a.order - b.order));
@@ -623,6 +674,10 @@ function App() {
   }, [page, w?.id]);
   const completed = tasks.filter(t => t.status === 'Done').length,
     progress = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
+  const deadlines = tasks
+    .filter(t => t.status !== 'Done' && !!t.dueDate)
+    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+    .slice(0, 5);
   const nav = [
     ['Overview', LayoutDashboard],
     ['Document', BookOpen],
@@ -1006,6 +1061,77 @@ function App() {
                       </button>
                     </>
                   )}
+                </section>
+              </div>
+              <div className="cols dashboard-lower">
+                <section className="panel">
+                  <div className="panel-head">
+                    <div>
+                      <h3>Upcoming deadlines</h3>
+                      <small>Open tasks ordered by due date</small>
+                    </div>
+                    <button onClick={() => P('Tasks')}>Manage tasks →</button>
+                  </div>
+                  {deadlines.map(t => {
+                    const label = deadlineLabel(t.dueDate);
+                    const tone = label.includes('overdue') ? ' overdue' : label === 'Due today' ? ' today' : '';
+                    return (
+                      <div className="deadline-item" key={t.id}>
+                        <CalendarDays size={17} />
+                        <span className="deadline-copy">
+                          <b>{t.title}</b>
+                          <small>{t.assigneeName || 'Unassigned'} · {date(t.dueDate)}</small>
+                        </span>
+                        <em className={'deadline-tag' + tone}>{label}</em>
+                      </div>
+                    );
+                  })}
+                  {!deadlines.length && (
+                    <p className="muted">No upcoming deadlines yet. Add a due date to a task and it will appear here.</p>
+                  )}
+                </section>
+                <section className="panel map-panel">
+                  <div className="panel-head">
+                    <div>
+                      <h3><MapPin size={15} /> Research location map</h3>
+                      <small>Find your school, meeting place, or field site</small>
+                    </div>
+                  </div>
+                  <form className="map-search" onSubmit={e => {
+                    e.preventDefault();
+                    const nextQuery = mapQuery.trim();
+                    if (!nextQuery) {
+                      E('Enter a location to show it on the map.');
+                      return;
+                    }
+                    try {
+                      window.localStorage.setItem('research-room-map:' + w.id, nextQuery);
+                    } catch {
+                      // Keep the current map available for this session.
+                    }
+                    AMQ(nextQuery);
+                    MSG('Map location updated.');
+                  }}>
+                    <input
+                      aria-label="Search map location"
+                      value={mapQuery}
+                      onChange={e => MAPQ(e.target.value)}
+                      placeholder="Search a place or address"
+                    />
+                    <button className="secondary" type="submit">Show map</button>
+                  </form>
+                  <div className="map-frame">
+                    <iframe
+                      title={'Map showing ' + activeMapQuery}
+                      src={'https://maps.google.com/maps?q=' + encodeURIComponent(activeMapQuery) + '&output=embed'}
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                    />
+                  </div>
+                  <div className="map-foot">
+                    <span>Showing: {activeMapQuery}</span>
+                    <a href={'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(activeMapQuery)} target="_blank" rel="noreferrer">Open full map ↗</a>
+                  </div>
                 </section>
               </div>
             </>
