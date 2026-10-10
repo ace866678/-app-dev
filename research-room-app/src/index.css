@@ -1223,3 +1223,124 @@ small {
   .chat-composer-footer { align-items: flex-start; flex-direction: column; }
   .chat-composer-footer .primary { width: 100%; }
 }
+
+
+/* Dashboard deadline and map panels */
+.dashboard-lower {
+  margin-top: 16px;
+  align-items: start;
+}
+.deadline-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 0;
+  border-top: 1px solid #f0f1f6;
+  color: #7771c9;
+}
+.deadline-copy {
+  flex: 1;
+  min-width: 0;
+}
+.deadline-copy b,
+.deadline-copy small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.deadline-copy b {
+  color: var(--ink);
+  font-size: 11px;
+}
+.deadline-copy small {
+  color: #999eb0;
+  font-size: 10px;
+  margin-top: 4px;
+}
+.deadline-tag {
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+  white-space: nowrap;
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: #5c55ae;
+  background: #f1efff;
+}
+.deadline-tag.overdue {
+  background: #fff0f0;
+  color: #b33c4b;
+}
+.deadline-tag.today {
+  background: #fff3dd;
+  color: #9b6b13;
+}
+.map-panel .panel-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.map-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding-top: 4px;
+  padding-bottom: 12px;
+}
+.map-search input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #e0e3ed;
+  border-radius: 8px;
+  padding: 10px 11px;
+  color: var(--ink);
+  font: 11px 'DM Sans';
+  outline: none;
+}
+.map-search input:focus {
+  border-color: #8d82e9;
+  box-shadow: 0 0 0 3px #6558d914;
+}
+.map-frame {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border: 1px solid #e6e8f1;
+  border-radius: 10px;
+  background: #f5f6fa;
+}
+.map-frame iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.map-foot {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+  color: #858aa0;
+}
+.map-foot a {
+  color: var(--purple);
+  font-weight: 700;
+  text-decoration: none;
+}
+@media (max-width: 760px) {
+  .map-search {
+    grid-template-columns: 1fr;
+  }
+  .map-search button {
+    width: 100%;
+  }
+  .deadline-item {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .deadline-tag {
+    margin-left: 27px;
+  }
+}
