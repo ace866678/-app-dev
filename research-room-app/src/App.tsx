@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from './supabase';
+import ResearchChat from './ResearchChat';
+import ResearchMeetings from './ResearchMeetings';
+import ResearchNotifications from './ResearchNotifications';
 import {
   BookOpen,
   LayoutDashboard,
@@ -62,15 +65,8 @@ type Mt = {
   agenda: string[];
   notes: string;
 };
-type ChatMessage = {
-  id: string;
-  workspaceId: string;
-  senderId: string;
-  senderName: string;
-  text: string;
-  topic: string;
-  createdAt: string;
-};
+type ChatMessage = { id:string; workspaceId:string; senderId:string; senderName:string; text:string; topic:string; createdAt:string };
+type ResearchNotification = { id:string; workspaceId:string; recipientId:string; actorId?:string|null; kind:'message'|'meeting'|'task'|'ownership'; content:string; metadata:Record<string,any>; createdAt:string; readAt?:string|null };
 const template = [
   [
     'Introduction',
@@ -121,7 +117,7 @@ const template = [
     'List all sources cited in the manuscript. Follow the institution’s required citation style and check consistency.',
   ],
 ];
-const agenda = [
+const defaultAgenda = [
   'Agree on the working thesis title and target users',
   'Review Chapter 1 structure and missing evidence',
   'Divide the Introduction and Background of the Problem',
@@ -343,6 +339,12 @@ function App() {
   const [chatFilter, CFILTER] = useState('All topics');
   const [chatSearch, CSEARCH] = useState('');
   const [draggedSectionId, DSI] = useState('');
+  const [agendaItems, AITEMS] = useState<string[]>(defaultAgenda);
+  const [meetingAgendaDraft, MAD] = useState<string[]>([]);
+  const [agendaDraftForMeetingId, MADI] = useState('');
+  const [meetingsExpanded, MEETINGS_EXPANDED] = useState(false);
+  const [notifications, NOTIFS] = useState<ResearchNotification[]>([]);
+  const [showNotifications, SHOW_NOTIFICATIONS] = useState(false);
   const [sectionChapter, SCHAPTER] = useState('Chapter 1');
   const [exportChapter, EXPCHAPTER] = useState('All chapters');
   const [templateImportPreview, TIP] = useState<{ fileName: string; sections: Array<{ title: string; content: string; chapter: string; order: number }> } | null>(null);
@@ -641,6 +643,8 @@ function App() {
     S((d.sections || []).sort((a: S, b: S) => a.order - b.order));
     T(d.tasks || []);
     MT(d.meetings || []);
+    const notificationResult = await supabase.from('research_notifications').select('*').eq('recipient_id', sessionUser.id).order('created_at', { ascending: false }).limit(25);
+    if (!notificationResult.error) NOTIFS(camelize(notificationResult.data || []));
     SCHAPTER((d.sections || [])[0]?.chapter || 'Chapter 1');
     EXPCHAPTER('All chapters');
     TIP(null);
@@ -836,10 +840,10 @@ function App() {
   const join = () =>
     run(async () => {
       const d = await call('post', '/api/workspaces/join', { joinCode: code });
-      await reloadSpaces();
-      await load(d.workspace);
-      MOD('');
-      CODE('');
+      const joinedWorkspace = d.workspace as W;
+      SP(existing => existing.some(space => space.id === joinedWorkspace.id) ? existing.map(space => space.id === joinedWorkspace.id ? joinedWorkspace : space) : [joinedWorkspace, ...existing]);
+      await load(joinedWorkspace);
+      MOD(''); CODE(''); P('Overview');
     }, 'Joined workspace.');
   const open = (s: S) => {
     SID(s.id);
@@ -917,12 +921,28 @@ function App() {
       const d = await call('post', '/api/meetings', {
         ...mf,
         workspaceId: w!.id,
-        agenda,
+        agenda: agendaItems.map(item => item.trim()).filter(Boolean),
       });
       MT(a => [d.meeting, ...a]);
       MF({ title: 'Research group meeting', date: '', notes: '' });
-      SMI(d.meeting.id);
+      AITEMS(defaultAgenda); SMI(d.meeting.id); MADI(d.meeting.id); MAD(d.meeting.agenda || []);
     }, 'Meeting created.');
+  const selectMeeting = (meeting: Mt) => { SMI(meeting.id); MADI(meeting.id); MAD([...(meeting.agenda || [])]); };
+  const saveMeetingAgenda = () => run(async () => {
+    const meeting = meetings.find(item => item.id === selectedMeetingId); if (!meeting) throw new Error('Choose a meeting first.');
+    const agendaToSave = (agendaDraftForMeetingId === meeting.id ? meetingAgendaDraft : (meeting.agenda || [])).map(item => item.trim()).filter(Boolean);
+    const updated = { ...meeting, agenda: agendaToSave }; await call('put', '/api/meetings/' + meeting.id, updated);
+    MT(current => current.map(item => item.id === meeting.id ? updated : item)); MADI(meeting.id); MAD(agendaToSave);
+  }, 'Meeting agenda saved.');
+  const saveMeetingNotes = (meeting: Mt, notes: string) => run(async () => { const updated = { ...meeting, notes }; await call('put', '/api/meetings/' + meeting.id, updated); MT(current => current.map(item => item.id === meeting.id ? updated : item)); }, 'Meeting notes saved.');
+  const openNotification = (notice: ResearchNotification) => run(async () => {
+    const target = spaces.find(space => space.id === notice.workspaceId); if (target && target.id !== w?.id) await load(target);
+    const readAt = notice.readAt || new Date().toISOString(); const result = await supabase.from('research_notifications').update({ read_at: readAt }).eq('id', notice.id).eq('recipient_id', user!.userId); if (result.error) throw result.error;
+    NOTIFS(items => items.map(item => item.id === notice.id ? { ...item, readAt } : item)); const topic = typeof notice.metadata?.topic === 'string' ? notice.metadata.topic : ''; if (topic && CHAT_TOPICS.includes(topic)) { CTopic(topic); CFILTER(topic); }
+    P(notice.kind === 'meeting' ? 'Meetings' : notice.kind === 'task' ? 'Tasks' : 'Chat'); SHOW_NOTIFICATIONS(false);
+  });
+  const markAllNotificationsRead = () => run(async () => { const readAt = new Date().toISOString(); const result = await supabase.from('research_notifications').update({ read_at: readAt }).eq('recipient_id', user!.userId).is('read_at', null); if (result.error) throw result.error; NOTIFS(items => items.map(item => item.readAt ? item : { ...item, readAt })); }, 'Notifications marked as read.');
+  const requestBrowserNotifications = async () => { if (!('Notification' in window)) { MSG('This browser does not support desktop notifications.'); return; } try { const permission = await window.Notification.requestPermission(); MSG(permission === 'granted' ? 'Desktop notifications enabled.' : 'Desktop alerts were not enabled; in-app notifications still work.'); } catch { MSG('Could not enable desktop notifications in this browser.'); } };
   const saveSettings = (e: any) => {
     e.preventDefault();
     return run(async () => {
@@ -1000,6 +1020,15 @@ function App() {
     .filter(t => t.status !== 'Done' && !!t.dueDate)
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
     .slice(0, 5);
+  const unreadNotificationCount = notifications.filter(item => !item.readAt).length;
+  useEffect(() => {
+    if (!user?.userId) return;
+    const channel = supabase.channel('research-notifications-' + user.userId).on('postgres_changes', { event:'INSERT', schema:'public', table:'research_notifications', filter:'recipient_id=eq.' + user.userId }, payload => {
+      const incoming = camelize(payload.new) as ResearchNotification; NOTIFS(items => [incoming, ...items.filter(item => item.id !== incoming.id)].slice(0,25)); MSG(incoming.content);
+      if ('Notification' in window && window.Notification.permission === 'granted') { try { new window.Notification('Research Room', { body:incoming.content }); } catch { /* in-app notice remains visible */ } }
+    }).subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [user?.userId]);
   const nav = [
     ['Overview', LayoutDashboard],
     ['Document', BookOpen],
@@ -1270,6 +1299,7 @@ function App() {
           <span>
             Workspace <ChevronRight size={14} /> <b>{page}</b>
           </span>
+          <div className={showNotifications ? 'notifications-host open' : 'notifications-host'}><ResearchNotifications unread={unreadNotificationCount} notifications={notifications} onToggle={() => SHOW_NOTIFICATIONS(v => !v)} onClose={() => SHOW_NOTIFICATIONS(false)} open={notice => void openNotification(notice)} markRead={() => void markAllNotificationsRead()} enableDesktop={() => void requestBrowserNotifications()} /></div>
           <button className="secondary invite" onClick={copy}>
             <Users size={15} /> Invite team
           </button>
@@ -1756,141 +1786,8 @@ function App() {
               </div>
             </>
           )}
-          {page === 'Meetings' && (
-            <>
-              <div className="heading">
-                <div><small>TEAM CHECK-IN</small><h1>Research meetings</h1><p>Upcoming schedules first. Open a meeting to review its agenda and shared notes.</p></div>
-                <button className="secondary" onClick={() => P('Overview')}><CalendarDays size={15} /> Dashboard calendar</button>
-              </div>
-              <div className="meetings-workspace">
-                <section className="panel meeting-schedule-panel">
-                  <div className="panel-head"><div><h3>Meeting schedule · {meetings.length}</h3><small>Date and time are shown for every scheduled meeting.</small></div><CalendarDays size={18} /></div>
-                  <div className="meeting-schedule-list">
-                    {[...meetings].sort((a,b) => {
-                      if (!a.date) return 1;
-                      if (!b.date) return -1;
-                      return new Date(a.date).getTime() - new Date(b.date).getTime();
-                    }).map(meeting => (
-                      <button key={meeting.id} type="button" className={'meeting-schedule-row' + ((selectedMeeting?.id === meeting.id) ? ' selected' : '')} onClick={() => SMI(meeting.id)}>
-                        <span className="meeting-date-chip"><b>{meeting.date && !Number.isNaN(new Date(meeting.date).getTime()) ? new Date(meeting.date).toLocaleDateString([], { month:'short', day:'numeric' }) : 'TBD'}</b><small>{meeting.date && !Number.isNaN(new Date(meeting.date).getTime()) ? new Date(meeting.date).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }) : 'No time'}</small></span>
-                        <span className="meeting-schedule-copy"><b>{meeting.title}</b><small>{meetingDateLabel(meeting.date)}</small></span><ChevronRight size={15} />
-                      </button>
-                    ))}
-                    {!meetings.length && <p className="muted">No meetings scheduled yet. Create the first meeting on the right.</p>}
-                  </div>
-                  {selectedMeeting && (
-                    <div className="meeting-detail">
-                      <div className="panel-head"><div><h3>{selectedMeeting.title}</h3><small>{meetingDateLabel(selectedMeeting.date)}</small></div><button className="danger" onClick={() => CONF(selectedMeeting.id)}><Trash2 size={14} /> Delete</button></div>
-                      <p className="meeting-agenda-label">Agenda</p>
-                      {(selectedMeeting.agenda || []).map((item, index) => <div key={item} className="meeting-agenda-item"><span>{String(index + 1).padStart(2,'0')}</span>{item}</div>)}
-                      <label>Shared meeting notes
-                        <textarea rows={3} defaultValue={selectedMeeting.notes} key={selectedMeeting.id} onBlur={e => run(async () => {
-                          const updated = { ...selectedMeeting, notes: e.target.value };
-                          await call('put', '/api/meetings/' + selectedMeeting.id, updated);
-                          MT(list => list.map(item => item.id === updated.id ? updated : item));
-                        }, 'Meeting notes saved.')} />
-                      </label>
-                    </div>
-                  )}
-                </section>
-                <section className="panel meeting-create-panel">
-                  <h3>Schedule a meeting</h3><p className="muted">Choose a clear title, date and time so the session appears on the dashboard calendar.</p>
-                  <form onSubmit={e => { e.preventDefault(); addMeeting(); }}>
-                    <label>Meeting name<input required value={mf.title} onChange={e => MF({ ...mf, title: e.target.value })} placeholder="e.g. Chapter 1 review" /></label>
-                    <label>Date & time<input type="datetime-local" required value={mf.date} onChange={e => MF({ ...mf, date: e.target.value })} /></label>
-                    <label>Initial notes<textarea rows={3} value={mf.notes} onChange={e => MF({ ...mf, notes: e.target.value })} placeholder="Decisions needed, sources to bring, and goals…" /></label>
-                    <button className="primary wide" disabled={busy}><Plus size={15} /> Schedule research meeting</button>
-                  </form>
-                  <div className="meeting-prep"><small>RESEARCH MEETING CHECKLIST</small>{agenda.slice(0,4).map((item,index) => <div key={item}><span>{index+1}</span>{item}</div>)}</div>
-                </section>
-              </div>
-            </>
-          )}
-          {page === 'Chat' && (
-            <>
-              <div className="heading">
-                <div>
-                  <small>TEAM CHAT</small>
-                  <h1>Group conversation</h1>
-                  <p>Talk through research questions, share quick updates, and coordinate your next steps.</p>
-                </div>
-                <button className="secondary" onClick={() => void refreshChat()}>
-                  <RefreshCw size={15} /> Refresh messages
-                </button>
-              </div>
-              <section className="panel chat-panel">
-                <div className="chat-header">
-                  <div className="chat-room-icon"><MessageCircle size={19} /></div>
-                  <div>
-                    <strong>{w.title}</strong>
-                    <small>{members.length} workspace member{members.length === 1 ? '' : 's'}</small>
-                  </div>
-                  <span className="chat-refresh-label"><span /> Updates about every 5 seconds</span>
-                </div>
-                <div className="chat-tools">
-                  <label className="chat-search">
-                    <Search size={14} />
-                    <input value={chatSearch} onChange={e => CSEARCH(e.target.value)} placeholder="Search research discussions…" aria-label="Search messages" />
-                  </label>
-                  <label className="chat-filter">
-                    <span>Topic</span>
-                    <select value={chatFilter} onChange={e => CFILTER(e.target.value)}>
-                      {['All topics', ...CHAT_TOPICS].map(topic => <option key={topic}>{topic}</option>)}
-                    </select>
-                  </label>
-                </div>
-                <div className="chat-messages" aria-live="polite">
-                  {visibleChatMessages.map(m => (
-                    <article className={'chat-message ' + (m.senderId === user.userId ? 'mine' : 'theirs')} key={m.id}>
-                      <div className="chat-message-meta">
-                        <strong>{m.senderId === user.userId ? 'You' : m.senderName}</strong>
-                        <span className="chat-topic-tag">{m.topic || 'General'}</span>
-                        <time>{new Date(m.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</time>
-                      </div>
-                      <p>{m.text}</p>
-                    </article>
-                  ))}
-                  {!visibleChatMessages.length && (
-                    <div className="chat-empty">
-                      <MessageCircle size={30} />
-                      <strong>{chatMessages.length ? 'No matching messages' : 'Start your group conversation'}</strong>
-                      <p>{chatMessages.length ? 'Try a different topic or search phrase.' : 'Use the topic selector to keep Chapter 1, Chapter 2, literature review and methodology discussions organised.'}</p>
-                    </div>
-                  )}
-                </div>
-                <div className="chat-prompts">
-                  <small>RESEARCH QUICK PROMPTS</small>
-                  <div>
-                    <button type="button" onClick={() => { CTopic('Literature Review'); CD(d => (d ? d + '\n' : '') + 'Could you share the citation, publication year, method, key finding, and limitation of this study?'); }}>Ask for a citation</button>
-                    <button type="button" onClick={() => { CTopic('Chapter 1'); CD(d => (d ? d + '\n' : '') + 'What evidence supports this research problem, and what gap does our study address?'); }}>Clarify the research gap</button>
-                    <button type="button" onClick={() => { CTopic('Methodology'); CD(d => (d ? d + '\n' : '') + 'What data, participants, instruments, and evaluation criteria do we still need to define?'); }}>Review methodology</button>
-                  </div>
-                </div>
-                <form className="chat-composer" onSubmit={e => { e.preventDefault(); void sendChat(); }}>
-                  <label className="chat-topic-picker">
-                    Discussion topic
-                    <select value={chatTopic} onChange={e => CTopic(e.target.value)}>
-                      {CHAT_TOPICS.map(topic => <option key={topic}>{topic}</option>)}
-                    </select>
-                  </label>
-                  <textarea
-                    rows={3}
-                    maxLength={2000}
-                    value={chatDraft}
-                    onChange={e => CD(e.target.value)}
-                    placeholder="Share a research question, source, draft paragraph, decision, or progress update…"
-                    aria-label="Message your research group"
-                  />
-                  <div className="chat-composer-footer">
-                    <small>{chatDraft.length}/2000 characters · Keep claims tied to sources and separate evidence from assumptions.</small>
-                    <button className="primary" type="submit" disabled={busy || !chatDraft.trim()}>
-                      <Send size={15} /> Send to team
-                    </button>
-                  </div>
-                </form>
-              </section>
-            </>
-          )}
+          {page === 'Meetings' && <ResearchMeetings meetings={meetings} expanded={meetingsExpanded} onToggleExpanded={() => MEETINGS_EXPANDED(v => !v)} selected={selectedMeeting} onSelect={selectMeeting} onDelete={id => CONF(id)} selectedAgenda={selectedMeeting && agendaDraftForMeetingId === selectedMeeting.id ? meetingAgendaDraft : (selectedMeeting?.agenda || [])} onChangeSelectedAgenda={(items,id) => { MADI(id); MAD(items); }} onSaveAgenda={() => void saveMeetingAgenda()} onSaveNotes={saveMeetingNotes} form={mf} onFormChange={(key,value) => MF(current => ({...current,[key]:value}))} agenda={agendaItems} onNewAgendaChange={AITEMS} onCreate={() => void addMeeting()} busy={busy} onDashboard={() => P('Overview')} />}
+          {page === 'Chat' && <ResearchChat workspaceTitle={w.title} memberCount={members.length} refresh={() => void refreshChat()} search={chatSearch} onSearch={CSEARCH} filter={chatFilter} onFilter={CFILTER} messages={chatMessages} visible={visibleChatMessages} userId={user.userId} topics={CHAT_TOPICS} topic={chatTopic} onTopic={CTopic} draft={chatDraft} onDraft={CD} busy={busy} send={() => void sendChat()} notifications={notifications} unread={unreadNotificationCount} openNotice={openNotification} markRead={() => void markAllNotificationsRead()} enableDesktop={() => void requestBrowserNotifications()} />}
           {page === 'Team' && (
             <>
               <div className="heading">
@@ -1998,3 +1895,75 @@ function App() {
                 ['Workspace name', 'title'],
                 ['Thesis title', 'researchTitle'],
                 ['School / institution', 'institution'],
+                ['Degree program', 'program'],
+              ].map(([label, key]) => (
+                <label key={key}>
+                  {label}
+                  <input required={key === 'title'} value={(wf as any)[key]} onChange={e => WF({ ...wf, [key]: e.target.value })} />
+                </label>
+              ))}
+            </> : <label>Workspace join code
+              <input required value={code} onChange={e => CODE(e.target.value.toUpperCase())} maxLength={12} placeholder="Ask the owner for the code" />
+            </label>}
+            <div className="actions">
+              <button type="button" className="secondary" onClick={() => MOD('')}>Cancel</button>
+              <button className="primary" type="submit" disabled={busy}>{busy ? 'Please wait…' : modal === 'create' ? 'Create workspace' : 'Join workspace'}</button>
+            </div>
+            {err && <p className="error">{err}</p>}
+          </form>
+        </div>
+      )}
+      {transferTarget && (
+        <div className="shade">
+          <div className="modal">
+            <h2>Transfer workspace ownership?</h2>
+            <p>You are about to make <strong>{transferTarget.name}</strong> the owner of <strong>{w.title}</strong>. They will control task creation and deadlines. Your account will remain a member. You will no longer have owner controls after this transfer.</p>
+            <div className="actions">
+              <button className="secondary" onClick={() => TRANSFER(null)}>Cancel</button>
+              <button className="primary" disabled={busy} onClick={() => void transferOwnership(transferTarget.userId)}>Confirm transfer</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirm && (
+        <div className="shade">
+          <div className="modal">
+            <h2>Delete this item?</h2>
+            <p>This cannot be undone.</p>
+            <div className="actions">
+              <button className="secondary" onClick={() => CONF('')}>
+                Cancel
+              </button>
+              <button
+                className="primary red"
+                onClick={() =>
+                  run(async () => {
+                    if (page === 'Document') {
+                      await call('delete', '/api/sections/' + confirm);
+                      S(a => a.filter(s => s.id !== confirm));
+                      if (sid === confirm) {
+                        SID('');
+                        ST('');
+                        SC('');
+                      }
+                    } else if (page === 'Tasks') {
+                      await call('delete', '/api/tasks/' + confirm);
+                      T(a => a.filter(t => t.id !== confirm));
+                    } else {
+                      await call('delete', '/api/meetings/' + confirm);
+                      MT(a => a.filter(m => m.id !== confirm));
+                    }
+                    CONF('');
+                  }, 'Item deleted.')
+                }
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+export default App;
