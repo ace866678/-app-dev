@@ -435,7 +435,10 @@ function App() {
       const { data, error } = await supabase.auth.signUp({
         email: authEmail.trim(),
         password: authPassword,
-        options: { data: { name: authEmail.trim().split('@')[0] } },
+        options: {
+          data: { name: authEmail.trim().split('@')[0] },
+          emailRedirectTo: window.location.origin,
+        },
       });
       if (error) throw error;
       if (!data.session || !data.user) {
