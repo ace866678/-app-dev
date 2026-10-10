@@ -1,0 +1,89 @@
+[
+  {
+    "name": "Sign in and create a thesis workspace",
+    "sanity": true,
+    "viewport": "desktop",
+    "covers": [
+      "authentication",
+      "workspace creation",
+      "database create/read",
+      "member join code"
+    ],
+    "description": "Verifies a signed-in researcher can create a workspace and see its saved thesis settings.",
+    "steps": [
+      "Sign in using the sign-in button",
+      "Create a workspace with a title and institution",
+      "Open the workspace dashboard"
+    ],
+    "expected": "The workspace title and generated join code appear in the dashboard."
+  },
+  {
+    "name": "Edit and retain thesis proposal sections",
+    "viewport": "desktop",
+    "covers": [
+      "thesis section editor",
+      "database update",
+      "saved content persistence",
+      "document template"
+    ],
+    "description": "Verifies editing a proposal section persists after navigating away and returning.",
+    "steps": [
+      "Open the thesis document",
+      "Edit the Introduction section",
+      "Save changes and navigate to the dashboard",
+      "Reopen the Introduction section"
+    ],
+    "expected": "The saved introduction text is still present."
+  },
+  {
+    "name": "Create, assign, and complete a task",
+    "viewport": "desktop",
+    "covers": [
+      "task CRUD",
+      "member assignment",
+      "task status",
+      "database persistence"
+    ],
+    "description": "Verifies a member can create a task, assign it, update status, and retain the changes.",
+    "steps": [
+      "Open Tasks",
+      "Create a task with a title and due date",
+      "Assign it to a workspace member and set status to In progress",
+      "Save, refresh, and reopen Tasks"
+    ],
+    "expected": "The task appears with the chosen assignee, due date, and status."
+  },
+  {
+    "name": "Prevent empty document and task submissions",
+    "viewport": "mobile",
+    "covers": [
+      "required field validation",
+      "invalid-write guardrail",
+      "mobile responsive layout"
+    ],
+    "description": "Verifies required fields prevent empty records and forms remain usable on mobile.",
+    "steps": [
+      "Open the task creation form",
+      "Leave the task title blank and submit",
+      "Open the document editor and save an empty section title"
+    ],
+    "expected": "Validation messages appear and no blank task or section is created."
+  },
+  {
+    "name": "Join a workspace as a second member",
+    "viewport": "desktop",
+    "covers": [
+      "shared workspace access",
+      "join code validation",
+      "cross-member shared data",
+      "authorization"
+    ],
+    "description": "Verifies a second signed-in member can join using a workspace code and view shared tasks and document sections.",
+    "steps": [
+      "Actor A creates a workspace and a task",
+      "Actor B signs in and enters Actor A's join code",
+      "Actor B opens the workspace tasks and document"
+    ],
+    "expected": "Actor B sees the shared workspace content; an invalid join code is rejected."
+  }
+]
