@@ -334,13 +334,13 @@ const getAuthRedirectUrl = () => {
 };
 function FluidWaveBackdrop() {
   const waveOneA = 'M0 255 C180 198 310 314 490 258 C660 205 820 286 990 246 C1170 206 1360 299 1600 234 L1600 438 C1360 498 1170 398 990 449 C820 500 660 424 490 465 C310 506 180 399 0 458 Z';
-  const waveOneB = 'M0 300 C180 346 310 200 490 278 C660 355 820 220 990 278 C1170 337 1360 205 1600 285 L1600 490 C1360 418 1170 535 990 480 C820 425 660 535 490 493 C310 451 180 538 0 505 Z';
-  const waveOneC = 'M0 230 C180 176 310 326 490 245 C660 170 820 326 990 236 C1170 153 1360 326 1600 220 L1600 430 C1360 515 1170 375 990 455 C820 535 660 405 490 465 C310 525 180 380 0 450 Z';
+
+
   const waveTwoA = 'M0 420 C180 365 320 470 500 424 C680 378 830 488 1010 438 C1190 388 1370 485 1600 420 L1600 640 C1370 700 1190 605 1010 657 C830 709 680 595 500 643 C320 691 180 585 0 645 Z';
-  const waveTwoB = 'M0 455 C180 500 320 365 500 450 C680 535 830 390 1010 465 C1190 540 1370 385 1600 470 L1600 690 C1370 600 1190 745 1010 680 C830 615 680 750 500 690 C320 630 180 735 0 690 Z';
-  const waveTwoC = 'M0 390 C180 345 320 500 500 410 C680 320 830 515 1010 425 C1190 335 1370 530 1600 405 L1600 625 C1370 735 1190 570 1010 650 C830 730 680 565 500 655 C320 745 180 560 0 630 Z';
+
+
   const waveThreeA = 'M0 590 C180 535 330 645 510 590 C690 535 840 650 1020 600 C1200 550 1390 655 1600 585 L1600 810 C1390 875 1200 765 1020 820 C840 875 690 760 510 815 C330 870 180 755 0 820 Z';
-  const waveThreeB = 'M0 625 C180 675 330 535 510 620 C690 705 840 555 1020 630 C1200 705 1390 550 1600 635 L1600 850 C1390 780 1200 900 1020 850 C840 800 690 905 510 850 C330 795 180 900 0 850 Z';
+
   return (
     <div className="fluid-wave-backdrop" aria-hidden="true">
       <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
@@ -361,15 +361,9 @@ function FluidWaveBackdrop() {
             <stop offset="100%" stopColor="#ffdfd6" />
           </linearGradient>
         </defs>
-        <path className="fluid-wave-lilac" d={waveOneA} fill="url(#research-wave-lilac)" fillOpacity=".38">
-          <animate attributeName="d" dur="18s" repeatCount="indefinite" values={waveOneA + ';' + waveOneB + ';' + waveOneC + ';' + waveOneA} />
-        </path>
-        <path className="fluid-wave-mint" d={waveTwoA} fill="url(#research-wave-mint)" fillOpacity=".34">
-          <animate attributeName="d" dur="23s" repeatCount="indefinite" values={waveTwoA + ';' + waveTwoB + ';' + waveTwoC + ';' + waveTwoA} />
-        </path>
-        <path className="fluid-wave-pink" d={waveThreeA} fill="url(#research-wave-pink)" fillOpacity=".28">
-          <animate attributeName="d" dur="20s" repeatCount="indefinite" values={waveThreeA + ';' + waveThreeB + ';' + waveThreeA} />
-        </path>
+        <path className="fluid-wave-lilac" d={waveOneA} fill="url(#research-wave-lilac)" fillOpacity=".38" />
+        <path className="fluid-wave-mint" d={waveTwoA} fill="url(#research-wave-mint)" fillOpacity=".34" />
+        <path className="fluid-wave-pink" d={waveThreeA} fill="url(#research-wave-pink)" fillOpacity=".28" />
       </svg>
     </div>
   );
@@ -1998,3 +1992,9 @@ function App() {
                       <p className="muted">
                         {t.assigneeName || 'Unassigned'} · {date(t.dueDate)}
                       </p>
+                      {isOwner && <label className="task-deadline-edit">
+                        Deadline
+                        <input type="date" value={t.dueDate || ''} onChange={e => changeTask(t, { dueDate: e.target.value })} />
+                      </label>}
+                      <div className="two">
+                        <label>
