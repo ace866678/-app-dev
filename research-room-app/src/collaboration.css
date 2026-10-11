@@ -138,3 +138,15 @@
 @media(max-width:800px){.workspace-list-grid{grid-template-columns:1fr}.avatar-choice-grid{grid-template-columns:repeat(5,minmax(0,1fr))}.workspace-list-heading{align-items:flex-start}}
 @media(max-width:520px){.profile-editor{padding:15px}.avatar-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.avatar-choice{flex-direction:row;justify-content:flex-start;padding:8px}.avatar-choice>.avatar-art{width:38px;height:38px}.profile-editor-heading{align-items:flex-start}.profile-editor-preview{width:52px;height:52px}.workspace-list-actions{width:100%}.workspace-list-actions>button{flex:1}.chat-command-menu>button{grid-template-columns:90px minmax(0,1fr) 14px}.chat-command-menu code{font-size:9px}}
 
+
+
+/* Inline member status directly under the Current Research details */
+.hero-member-status{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px;padding-top:13px;border-top:1px solid #ffffff2c}
+.hero-member-avatars{display:flex;align-items:center;padding-left:2px}
+.hero-member-avatar{position:relative;display:block;width:31px;height:31px;flex:none;margin-left:-3px;border:2px solid #ffffff66;border-radius:50%;background:#ffffff24;overflow:visible}
+.hero-member-avatar:first-child{margin-left:0}
+.hero-member-avatar>.avatar-art{width:100%;height:100%;border-radius:50%}
+.hero-member-avatar>.presence-dot{right:-1px;bottom:-1px;width:10px;height:10px;border-color:#fff}
+.hero-member-status-summary{display:inline-flex;align-items:center;gap:6px;color:#ffffffd9;font-size:11px;font-weight:600}
+.hero-online-indicator{width:7px;height:7px;border-radius:50%;background:#48dc8b;box-shadow:0 0 0 3px #48dc8b24}
+.hero-status-divider{opacity:.5;margin:0 2px}

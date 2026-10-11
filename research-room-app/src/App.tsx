@@ -1547,6 +1547,27 @@ function App() {
                 <button onClick={() => P('Settings')}>
                   Edit research details ↗
                 </button>
+                <div className="hero-member-status" aria-label="Workspace members online status">
+                  <div className="hero-member-avatars">
+                    {members.map(member => {
+                      const online = onlineUserIds.includes(member.userId);
+                      return <span
+                        className="hero-member-avatar"
+                        key={member.id}
+                        title={(member.name || 'Researcher') + (online ? ' · Online' : ' · Offline')}
+                        aria-label={(member.name || 'Researcher') + (online ? ' online' : ' offline')}
+                      >
+                        <AvatarArt value={member.avatarUrl} name={member.name} />
+                        <i className={'presence-dot ' + (online ? 'online' : 'offline')} />
+                      </span>;
+                    })}
+                  </div>
+                  <span className="hero-member-status-summary" aria-live="polite">
+                    <span className="hero-online-indicator" />
+                    {onlineUserIds.length} online <span className="hero-status-divider">·</span>
+                    {Math.max(0, members.length - onlineUserIds.length)} offline
+                  </span>
+                </div>
               </section>
               <div className="stats">
                 <article>
@@ -1669,7 +1690,7 @@ function App() {
                 </button>)}
                 {!upcomingMeetings.length && <p className="muted">No future meetings scheduled. Open Meetings to add the date and time of your next research session.</p>}
               </div>
-              <div className="cols dashboard-lower">
+              <div className="dashboard-lower">
                 <section className="panel">
                   <div className="panel-head">
                     <div>
@@ -1696,26 +1717,7 @@ function App() {
                     <p className="muted">No upcoming deadlines yet. Add a due date to a task and it will appear here.</p>
                   )}
                 </section>
-                <section className="panel dashboard-presence-panel">
-                  <div className="panel-head">
-                    <div><h3>Team presence</h3><small>{onlineUserIds.length} online · {Math.max(0, members.length - onlineUserIds.length)} offline</small></div>
-                    <Users size={18} />
-                  </div>
-                  <div className="presence-list">
-                    {members.map(member => {
-                      const online = onlineUserIds.includes(member.userId);
-                      return <div className="presence-member-row" key={member.id}>
-                        <span className="member-avatar">
-                          <AvatarArt value={member.avatarUrl} name={member.name} />
-                          <i className={'presence-dot ' + (online ? 'online' : 'offline')} />
-                        </span>
-                        <span className="presence-member-copy"><b>{member.name || 'Researcher'}{member.userId === user.userId ? ' (You)' : ''}</b><small>{member.role === 'owner' ? 'Owner / Leader' : 'Member'}</small></span>
-                        <em className={'presence-status ' + (online ? 'online' : 'offline')}>{online ? 'Online' : 'Offline'}</em>
-                      </div>;
-                    })}
-                    {!members.length && <p className="muted">Team members will appear here when they join the workspace.</p>}
-                  </div>
-                </section>
+
               </div>
             </>
           )}
