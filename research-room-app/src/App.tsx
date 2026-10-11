@@ -51,6 +51,7 @@ type M = {
   avatarUrl?: string;
 };
 type S = { id: string; title: string; content: string; order: number; chapter: string; createdBy?: string | null; updatedBy?: string | null; createdAt?: string | null; updatedAt?: string | null };
+type Ch = { id: string; workspaceId: string; title: string; chapterOrder: number; createdBy?: string | null; createdAt?: string };
 type T = {
   id: string;
   title: string;
@@ -69,7 +70,7 @@ type Mt = {
   notes: string;
 };
 type ChatMessage = { id:string; workspaceId:string; senderId:string; senderName:string; text:string; topic:string; createdAt:string };
-type ResearchNotification = { id:string; workspaceId:string; recipientId:string; actorId?:string|null; kind:'message'|'meeting'|'task'|'ownership'; content:string; metadata:Record<string,any>; createdAt:string; readAt?:string|null };
+type ResearchNotification = { id:string; workspaceId:string; recipientId:string; actorId?:string|null; kind:'message'|'meeting'|'task'|'ownership'|'document'|'mention'; content:string; metadata:Record<string,any>; createdAt:string; readAt?:string|null };
 const template = [
   [
     'Introduction',
@@ -140,7 +141,7 @@ const deadlineLabel = (s?: string) => {
   if (days === 1) return 'Due tomorrow';
   return `Due in ${days} days`;
 };
-const CHAT_TOPICS = ['General', 'Chapter 1', 'Chapter 2', 'Literature Review', 'Methodology', 'Meetings & Planning'];
+const CHAT_TOPICS = ['General', 'Literature Review', 'Methodology', 'Meetings & Planning'];
 const xmlEscape = (value: string) => value
   .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -338,6 +339,8 @@ function App() {
     [tasks, T] = useState<T[]>([]),
     [meetings, MT] = useState<Mt[]>([]);
   const [onlineUserIds, ONLINE] = useState<string[]>([]);
+  const [chapters, CHAPTERS] = useState<Ch[]>([]);
+  const [chapterDraft, CHAPTER_DRAFT] = useState('');
   const [chatMessages, CM] = useState<ChatMessage[]>([]);
   const [chatDraft, CD] = useState('');
   const [chatTopic, CTopic] = useState('General');
@@ -476,12 +479,17 @@ function App() {
 
     if (method === 'post' && url === '/api/messages') {
       const user = await currentUser();
+      const requestedTopic = String(data.topic || 'General').trim().slice(0, 100) || 'General';
+      const mentionIds = Array.isArray(data.mentionedUserIds)
+        ? [...new Set(data.mentionedUserIds.filter((id: unknown): id is string => typeof id === 'string' && id !== user.id))]
+        : [];
       const row = unwrap(await supabase.from('research_messages').insert({
         workspace_id: data.workspaceId,
         sender_id: user.id,
         sender_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'Researcher',
         text: String(data.text || '').trim(),
-        topic: CHAT_TOPICS.includes(data.topic) ? data.topic : 'General',
+        topic: requestedTopic,
+        mentioned_user_ids: mentionIds,
       }).select('*').single());
       return { message: camelize(row) };
     }
@@ -489,12 +497,13 @@ function App() {
     const workspacePath = url.match(/^\/api\/workspaces\/([^/]+)$/);
     if (method === 'get' && workspacePath) {
       const id = workspacePath[1];
-      const [workspace, members, sections, tasks, meetings] = await Promise.all([
+      const [workspace, members, sections, tasks, meetings, chapters] = await Promise.all([
         supabase.from('research_workspaces').select('*').eq('id', id).single(),
         supabase.from('research_members').select('*').eq('workspace_id', id).order('joined_at', { ascending: true }),
         supabase.from('research_sections').select('*').eq('workspace_id', id).order('order', { ascending: true }),
         supabase.from('research_tasks').select('*').eq('workspace_id', id).order('created_at', { ascending: false }),
         supabase.from('research_meetings').select('*').eq('workspace_id', id).order('created_at', { ascending: false }),
+        supabase.from('research_chapters').select('*').eq('workspace_id', id).order('chapter_order', { ascending: true }).order('title', { ascending: true }),
       ]);
       return {
         workspace: camelize(unwrap(workspace)),
@@ -502,6 +511,7 @@ function App() {
         sections: camelize(unwrap(sections) || []),
         tasks: camelize(unwrap(tasks) || []),
         meetings: camelize(unwrap(meetings) || []),
+        chapters: camelize(unwrap(chapters) || []),
       };
     }
 
@@ -517,6 +527,19 @@ function App() {
     if (method === 'delete' && workspacePath) {
       const deleted = unwrap(await supabase.from('research_workspaces').delete().eq('id', workspacePath[1]).select('id').single());
       return { deleted: !!deleted };
+    }
+
+    if (method === 'post' && url === '/api/chapters') {
+      const user = await currentUser();
+      const chapterTitle = String(data.title || '').trim();
+      if (!chapterTitle) throw new Error('Chapter name is required.');
+      const row = unwrap(await supabase.from('research_chapters').insert({
+        workspace_id: data.workspaceId,
+        title: chapterTitle,
+        chapter_order: Number(data.chapterOrder) || 0,
+        created_by: user.id,
+      }).select('*').single());
+      return { chapter: camelize(row) };
     }
 
     const sectionPath = url.match(/^\/api\/sections\/([^/]+)$/);
@@ -626,6 +649,7 @@ function App() {
       S([]);
       T([]);
       MT([]);
+      CHAPTERS([]);
       CM([]);
       return;
     }
@@ -663,6 +687,7 @@ function App() {
       return { ...member, name: member.name || profile?.display_name || 'Researcher', avatarUrl: profile?.avatar_url || (member.userId === sessionUser.id ? avatarUrl : '') };
     }));
     S((d.sections || []).sort((a: S, b: S) => a.order - b.order));
+    CHAPTERS(d.chapters || []);
     T(d.tasks || []);
     MT(d.meetings || []);
     const notificationResult = await supabase.from('research_notifications').select('*').eq('recipient_id', sessionUser.id).order('created_at', { ascending: false }).limit(25);
@@ -935,6 +960,23 @@ function App() {
       }
       await load(w!);
     }, 'Section saved.');
+  const openChapterChat = (chapter: string) => {
+    CTopic(chapter); CFILTER(chapter); CSEARCH(''); P('Chat');
+  };
+  const openChapterDocument = (chapter: string) => {
+    SCHAPTER(chapter); EXPCHAPTER(chapter); P('Document');
+  };
+  const createChapter = () => run(async () => {
+    const name = chapterDraft.trim();
+    if (!name) throw new Error('Enter a chapter name.');
+    const duplicate = chapters.some(chapter => chapter.title.trim().toLowerCase() === name.toLowerCase()) ||
+      sections.some(section => (section.chapter || 'Chapter 1').trim().toLowerCase() === name.toLowerCase());
+    if (duplicate) throw new Error('That chapter already exists. Choose a different name.');
+    await call('post', '/api/chapters', { workspaceId: w!.id, title: name, chapterOrder: chapters.length });
+    await load(w!);
+    CHAPTER_DRAFT(''); SID(''); ST(''); SC('');
+    SCHAPTER(name); EXPCHAPTER(name); MOD('');
+  }, 'Chapter created. It is now available as a chat topic.');
   const addTask = () =>
     run(async () => {
       if (!isOwner) throw Error('Only the workspace owner can create tasks or set deadlines.');
@@ -986,8 +1028,20 @@ function App() {
   const openNotification = (notice: ResearchNotification) => run(async () => {
     const target = spaces.find(space => space.id === notice.workspaceId); if (target && target.id !== w?.id) await load(target);
     const readAt = notice.readAt || new Date().toISOString(); const result = await supabase.from('research_notifications').update({ read_at: readAt }).eq('id', notice.id).eq('recipient_id', user!.userId); if (result.error) throw result.error;
-    NOTIFS(items => items.map(item => item.id === notice.id ? { ...item, readAt } : item)); const topic = typeof notice.metadata?.topic === 'string' ? notice.metadata.topic : ''; if (topic && CHAT_TOPICS.includes(topic)) { CTopic(topic); CFILTER(topic); }
-    P(notice.kind === 'meeting' ? 'Meetings' : notice.kind === 'task' ? 'Tasks' : 'Chat'); SHOW_NOTIFICATIONS(false);
+    NOTIFS(items => items.map(item => item.id === notice.id ? { ...item, readAt } : item));
+    const metadata = notice.metadata || {};
+    const topic = typeof metadata.topic === 'string' ? metadata.topic : '';
+    if (notice.kind === 'document' || metadata.route === 'Document') {
+      SID(typeof metadata.section_id === 'string' ? metadata.section_id : '');
+      const chapter = typeof metadata.chapter === 'string' ? metadata.chapter : '';
+      if (chapter) { SCHAPTER(chapter); EXPCHAPTER(chapter); }
+      else { SCHAPTER('Chapter 1'); EXPCHAPTER('All chapters'); }
+      P('Document');
+    } else {
+      if (topic) { CTopic(topic); CFILTER(topic); CSEARCH(''); }
+      P(notice.kind === 'meeting' ? 'Meetings' : notice.kind === 'task' ? 'Tasks' : 'Chat');
+    }
+    SHOW_NOTIFICATIONS(false);
   });
   const markAllNotificationsRead = () => run(async () => { const readAt = new Date().toISOString(); const result = await supabase.from('research_notifications').update({ read_at: readAt }).eq('recipient_id', user!.userId).is('read_at', null); if (result.error) throw result.error; NOTIFS(items => items.map(item => item.readAt ? item : { ...item, readAt })); }, 'Notifications marked as read.');
   const requestBrowserNotifications = async () => { if (!('Notification' in window)) { MSG('This browser does not support desktop notifications.'); return; } try { const permission = await window.Notification.requestPermission(); MSG(permission === 'granted' ? 'Desktop notifications enabled.' : 'Desktop alerts were not enabled; in-app notifications still work.'); } catch { MSG('Could not enable desktop notifications in this browser.'); } };
@@ -1012,7 +1066,7 @@ function App() {
     const d = await call('get', '/api/workspaces/' + w.id + '/messages');
     CM(d.messages || []);
   };
-  const sendChat = () =>
+  const sendChat = (mentionedUserIds: string[] = []) =>
     run(async () => {
       const messageText = chatDraft.trim();
       if (!messageText) throw Error('Write a message first.');
@@ -1020,6 +1074,7 @@ function App() {
         workspaceId: w!.id,
         text: messageText,
         topic: chatTopic,
+        mentionedUserIds,
       });
       CM(old => [...old, d.message].sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
       CD('');
@@ -1044,12 +1099,13 @@ function App() {
   }, [page, w?.id]);
   const completed = tasks.filter(t => t.status === 'Done').length,
     progress = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
-  const chapterOptions = Array.from(new Set(sections.map(section => section.chapter || 'Chapter 1')))
+  const chapterOptions = Array.from(new Set(['Chapter 1', ...chapters.map(chapter => chapter.title), ...sections.map(section => section.chapter || 'Chapter 1')]))
     .sort((a, b) => {
       const ai = Number(a.match(/\d+/)?.[0] || 100);
       const bi = Number(b.match(/\d+/)?.[0] || 100);
       return ai - bi || a.localeCompare(b);
     });
+  const chatTopics = Array.from(new Set([...CHAT_TOPICS, ...chapterOptions, ...chatMessages.map(message => message.topic).filter(Boolean)]));
   const sortedMeetings = [...meetings].filter(meeting => meeting.date && !Number.isNaN(new Date(meeting.date).getTime()))
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   const selectedMeeting = meetings.find(meeting => meeting.id === selectedMeetingId) || sortedMeetings[0] || null;
@@ -1587,6 +1643,10 @@ function App() {
                   <button className="primary" onClick={addTemplate}><Plus size={16} /> Add proposal template</button>
                 </div>
               </div>
+              <section className="panel chapter-manager">
+                <div className="panel-head"><div><h3>Document chapters · {chapterOptions.length}</h3><small>Every chapter is also available as a matching chat topic.</small></div><button type="button" className="primary" onClick={() => { let next = 1; while (chapterOptions.some(chapter => chapter.toLowerCase() === ('chapter ' + next).toLowerCase())) next++; CHAPTER_DRAFT('Chapter ' + next); E(''); MOD('chapter'); }}><Plus size={15} /> Add chapter</button></div>
+                <div className="chapter-chip-list">{chapterOptions.map(chapter => <div key={chapter} className={'chapter-chip' + (exportChapter === chapter ? ' selected' : '')}><button type="button" className="chapter-chip-name" onClick={() => { EXPCHAPTER(chapter); SCHAPTER(chapter); }}>{chapter}</button><button type="button" className="chapter-chip-discuss" onClick={() => openChapterChat(chapter)} aria-label={'Discuss ' + chapter + ' in chat'}>Open chat</button></div>)}</div>
+              </section>
               <div className="template-import-bar panel">
                 <div>
                   <h3><FileUp size={16} /> Import sample research template</h3>
@@ -1640,7 +1700,7 @@ function App() {
                         <small className="section-chapter-badge">{section.chapter || 'Chapter 1'}</small>
                       </button>
                     ))}
-                  <button className="secondary new-section-button" onClick={() => { SID(''); ST(''); SC(''); SCHAPTER(chapterOptions[0] || 'Chapter 1'); }}>+ Create new section</button>
+                  <button className="secondary new-section-button" onClick={() => { SID(''); ST(''); SC(''); SCHAPTER(exportChapter !== 'All chapters' ? exportChapter : (chapterOptions[0] || 'Chapter 1')); }}>+ Create new section</button>
                 </section>
                 <section className="panel editor">
                   <div className="panel-head">
@@ -1654,6 +1714,7 @@ function App() {
                     <input list="research-chapter-options" value={sectionChapter} onChange={e => SCHAPTER(e.target.value)} placeholder="e.g. Chapter 1" />
                     <datalist id="research-chapter-options">{chapterOptions.map(chapter => <option key={chapter} value={chapter} />)}</datalist>
                   </label>
+                  <button type="button" className="secondary chapter-discuss-button" onClick={() => openChapterChat(sectionChapter)}>Discuss {sectionChapter || 'this chapter'} in Chat</button>
                   <div className="section-attribution" aria-label="Section authorship and edit history">
                     <div><span><Users size={13} /> Created by</span><strong>{activeSectionMeta ? memberDisplayName(activeSectionMeta.createdBy) : 'You'}</strong><small>{activeSectionMeta?.createdAt ? formatSectionDate(activeSectionMeta.createdAt) : activeSectionMeta ? 'Original creation time unavailable' : 'Creator is recorded when this section is saved'}</small></div>
                     <div><span><Clock3 size={13} /> Last modified</span><strong>{activeSectionMeta ? memberDisplayName(activeSectionMeta.updatedBy) : 'After first save'}</strong><small>{activeSectionMeta?.updatedAt ? formatSectionDate(activeSectionMeta.updatedAt) : activeSectionMeta ? 'Edit time not recorded' : 'Saved changes record the editor and time'}</small></div>
@@ -1827,7 +1888,7 @@ function App() {
             </>
           )}
           {page === 'Meetings' && <ResearchMeetings canManage={isOwner} meetings={meetings} expanded={meetingsExpanded} onToggleExpanded={() => MEETINGS_EXPANDED(v => !v)} selected={selectedMeeting} onSelect={selectMeeting} onDelete={id => CONF(id)} selectedAgenda={selectedMeeting && agendaDraftForMeetingId === selectedMeeting.id ? meetingAgendaDraft : (selectedMeeting?.agenda || [])} onChangeSelectedAgenda={(items,id) => { MADI(id); MAD(items); }} onSaveAgenda={() => void saveMeetingAgenda()} onSaveNotes={saveMeetingNotes} form={mf} onFormChange={(key,value) => MF(current => ({...current,[key]:value}))} agenda={agendaItems} onNewAgendaChange={AITEMS} onCreate={() => void addMeeting()} busy={busy} onDashboard={() => P('Overview')} />}
-          {page === 'Chat' && <ResearchChat workspaceTitle={w.title} memberCount={members.length} refresh={() => void refreshChat()} search={chatSearch} onSearch={CSEARCH} filter={chatFilter} onFilter={CFILTER} messages={chatMessages} visible={visibleChatMessages} userId={user.userId} topics={CHAT_TOPICS} topic={chatTopic} onTopic={CTopic} draft={chatDraft} onDraft={CD} busy={busy} send={() => void sendChat()} members={members} onlineUserIds={onlineUserIds} />}
+          {page === 'Chat' && <ResearchChat workspaceTitle={w.title} memberCount={members.length} refresh={() => void refreshChat()} search={chatSearch} onSearch={CSEARCH} filter={chatFilter} onFilter={CFILTER} messages={chatMessages} visible={visibleChatMessages} userId={user.userId} topics={chatTopics} chapterTopics={chapterOptions} onOpenChapter={openChapterDocument} topic={chatTopic} onTopic={CTopic} draft={chatDraft} onDraft={CD} busy={busy} send={ids => void sendChat(ids)} members={members} onlineUserIds={onlineUserIds} /> }
           {page === 'Team' && (
             <>
               <div className="heading">
@@ -1927,6 +1988,18 @@ function App() {
           )}
         </div>
       </main>
+      {modal === 'chapter' && (
+        <div className="shade">
+          <form className="modal" onSubmit={event => { event.preventDefault(); void createChapter(); }}>
+            <button type="button" className="close" onClick={() => MOD('')}><X size={18} /></button>
+            <h2>Add a chapter</h2>
+            <p>Chapter names are shared with Document and Chat. You can add sections to the new chapter next.</p>
+            <label>Chapter name<input required maxLength={100} autoFocus value={chapterDraft} onChange={event => CHAPTER_DRAFT(event.target.value)} placeholder="e.g. Chapter 3" /></label>
+            {err && <p className="error">{err}</p>}
+            <div className="actions"><button type="button" className="secondary" onClick={() => MOD('')}>Cancel</button><button className="primary" type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create chapter'}</button></div>
+          </form>
+        </div>
+      )}
       {(modal === 'create' || modal === 'join') && (
         <div className="shade">
           <form className="modal" onSubmit={e => { e.preventDefault(); modal === 'create' ? create() : join(); }}>

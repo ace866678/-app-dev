@@ -46,7 +46,10 @@
       "sample DOCX template import",
       "section creator attribution",
       "last editor and modification timestamp",
-      "custom section creation"
+      "custom section creation",
+      "explicit chapter creation",
+      "chapters synchronize with chat topics",
+      "document change notifications"
     ],
     "description": "Verifies editing a proposal section persists after navigating away and returning.",
     "steps": [
@@ -60,9 +63,12 @@
       "Select Chapter 1 and export the document",
       "Upload a sample DOCX and review detected headings before importing",
       "Open a section and review its creator, last editor, and modification time",
-      "Create a custom section, save it, and verify creator attribution is shown"
+      "Create a custom section, save it, and verify creator attribution is shown",
+      "Create a new chapter using Add chapter and confirm it appears in the document chapter list",
+      "Open Chat and confirm the new chapter is available as a matching chat topic",
+      "As another team member, edit a section and verify a document notification arrives with the section name"
     ],
-    "expected": "The export contains only the selected chapter's sections, and the sample DOCX import previews detected headings and assigns them to chapters before adding sections. Each section shows its recorded creator and last editor; new sections can be added and saved with attribution."
+    "expected": "The export contains only the selected chapter's sections, and the sample DOCX import previews detected headings and assigns them to chapters before adding sections. Each section shows its recorded creator and last editor; new sections can be added and saved with attribution. Chapters can be created independently and their names appear in chat topics. Other team members receive notifications when sections are added, edited, or deleted."
   },
   {
     "name": "Create and update tasks with validation",
@@ -102,7 +108,10 @@
       "message filtering and search",
       "profile photos beside chat messages",
       "full emoji search picker",
-      "live online indicators"
+      "live online indicators",
+      "chapter topics synchronized with document chapters",
+      "member @mentions",
+      "mention-specific notifications"
     ],
     "description": "Verifies workspace members can send messages and see each other's saved messages.",
     "steps": [
@@ -117,9 +126,12 @@
       "Confirm notifications remain in the global notification center, not the chat rail",
       "Verify messages show a circular profile photo or initials beside the sender",
       "Open the emoji picker, search for an emoji, and insert it into a message",
-      "Verify presence indicators appear beside online members"
+      "Verify presence indicators appear beside online members",
+      "Create a chapter in Document and verify its name becomes a chat topic",
+      "Select a teammate using the @mention suggestions and send the message",
+      "Verify the mentioned member receives a mention-specific notification and opening it goes to Chat"
     ],
-    "expected": "Messages retain their topic, members can filter/search research discussions, and messages persist across refresh. Chat rail contains topics only; selected topic is prominent and notifications remain global. Message rows show member avatars, and the emoji picker supports the full searchable emoji catalogue."
+    "expected": "Messages retain their topic, members can filter/search research discussions, and messages persist across refresh. Chat rail contains topics only; selected topic is prominent and notifications remain global. Message rows show member avatars, and the emoji picker supports the full searchable emoji catalogue. Chapter groups are shared between Document and Chat, and @mentions generate dedicated notifications for the mentioned teammate."
   },
   {
     "name": "Join a workspace and read shared research content",
