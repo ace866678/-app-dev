@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from './supabase';
+import { firebaseBackend } from './lib/firebaseBackend';
 import './collaboration.css';
 import ResearchChat from './ResearchChat';
 import ResearchMeetings from './ResearchMeetings';
@@ -430,11 +430,11 @@ function App() {
   const memberDisplayName = (userId?: string | null) => userId ? (members.find(member => member.userId === userId)?.name || (userId === user?.userId ? user?.name : 'Former member')) : 'Not recorded';
   const formatSectionDate = (value?: string | null) => value ? new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Not recorded';
   const unwrap = (result: any) => {
-    if (result.error) throw new Error(result.error.message || 'Supabase request failed.');
+    if (result.error) throw new Error(result.error.message || 'Firebase request failed.');
     return result.data;
   };
   const currentUser = async () => {
-    const result = await supabase.auth.getSession();
+    const result = await firebaseBackend.auth.getSession();
     if (result.error) throw result.error;
     const sessionUser = result.data.session?.user;
     if (!sessionUser) throw new Error('Your session is missing or expired. Please sign in again.');
@@ -457,15 +457,15 @@ function App() {
   ): Promise<any> => {
     if (method === 'get' && url === '/api/workspaces') {
       const user = await currentUser();
-      const memberRows = unwrap(await supabase.from('research_members').select('workspace_id').eq('user_id', user.id)) || [];
+      const memberRows = unwrap(await firebaseBackend.from('research_members').select('workspace_id').eq('user_id', user.id)) || [];
       const ids = [...new Set(memberRows.map((row: any) => row.workspace_id))];
       if (!ids.length) return { workspaces: [] };
-      const rows = unwrap(await supabase.from('research_workspaces').select('*').in('id', ids).order('created_at', { ascending: false })) || [];
+      const rows = unwrap(await firebaseBackend.from('research_workspaces').select('*').in('id', ids).order('created_at', { ascending: false })) || [];
       return { workspaces: camelize(rows) };
     }
 
     if (method === 'post' && url === '/api/workspaces') {
-      const row = unwrap(await supabase.rpc('create_research_workspace', {
+      const row = unwrap(await firebaseBackend.rpc('create_research_workspace', {
         p_title: data.title,
         p_research_title: data.researchTitle || '',
         p_institution: data.institution || '',
@@ -475,18 +475,18 @@ function App() {
     }
 
     if (method === 'post' && url === '/api/workspaces/join') {
-      const row = unwrap(await supabase.rpc('join_research_workspace', { p_join_code: data.joinCode }));
+      const row = unwrap(await firebaseBackend.rpc('join_research_workspace', { p_join_code: data.joinCode }));
       return { workspace: camelize(row) };
     }
 
     const messagesPath = url.match(/^\/api\/workspaces\/([^/]+)\/messages$/);
     if (method === 'get' && messagesPath) {
-      const rows = unwrap(await supabase.from('research_messages').select('*').eq('workspace_id', messagesPath[1]).order('created_at', { ascending: true }).limit(200)) || [];
+      const rows = unwrap(await firebaseBackend.from('research_messages').select('*').eq('workspace_id', messagesPath[1]).order('created_at', { ascending: true }).limit(200)) || [];
       return { messages: camelize(rows) };
     }
 
     if (method === 'post' && url === '/api/workspaces/transfer-owner') {
-      const result = await supabase.rpc('transfer_research_workspace_ownership', {
+      const result = await firebaseBackend.rpc('transfer_research_workspace_ownership', {
         p_workspace_id: data.workspaceId,
         p_new_owner_id: data.newOwnerId,
       });
@@ -496,9 +496,9 @@ function App() {
 
     if (method === 'post' && url === '/api/workspaces/leave') {
       const user = await currentUser();
-      const member = unwrap(await supabase.from('research_members').select('id, role').eq('workspace_id', data.workspaceId).eq('user_id', user.id).single());
+      const member = unwrap(await firebaseBackend.from('research_members').select('id, role').eq('workspace_id', data.workspaceId).eq('user_id', user.id).single());
       if (member.role === 'owner') throw new Error('Transfer ownership before leaving, or delete the workspace.');
-      const result = await supabase.from('research_members').delete().eq('workspace_id', data.workspaceId).eq('user_id', user.id).select('id').single();
+      const result = await firebaseBackend.from('research_members').delete().eq('workspace_id', data.workspaceId).eq('user_id', user.id).select('id').single();
       unwrap(result);
       return { left: true };
     }
@@ -509,7 +509,7 @@ function App() {
       const mentionIds = Array.isArray(data.mentionedUserIds)
         ? [...new Set(data.mentionedUserIds.filter((id: unknown): id is string => typeof id === 'string' && id !== user.id))]
         : [];
-      const row = unwrap(await supabase.from('research_messages').insert({
+      const row = unwrap(await firebaseBackend.from('research_messages').insert({
         workspace_id: data.workspaceId,
         sender_id: user.id,
         sender_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'Researcher',
@@ -524,12 +524,12 @@ function App() {
     if (method === 'get' && workspacePath) {
       const id = workspacePath[1];
       const [workspace, members, sections, tasks, meetings, chapters] = await Promise.all([
-        supabase.from('research_workspaces').select('*').eq('id', id).single(),
-        supabase.from('research_members').select('*').eq('workspace_id', id).order('joined_at', { ascending: true }),
-        supabase.from('research_sections').select('*').eq('workspace_id', id).order('order', { ascending: true }),
-        supabase.from('research_tasks').select('*').eq('workspace_id', id).order('created_at', { ascending: false }),
-        supabase.from('research_meetings').select('*').eq('workspace_id', id).order('created_at', { ascending: false }),
-        supabase.from('research_chapters').select('*').eq('workspace_id', id).order('chapter_order', { ascending: true }).order('title', { ascending: true }),
+        firebaseBackend.from('research_workspaces').select('*').eq('id', id).single(),
+        firebaseBackend.from('research_members').select('*').eq('workspace_id', id).order('joined_at', { ascending: true }),
+        firebaseBackend.from('research_sections').select('*').eq('workspace_id', id).order('order', { ascending: true }),
+        firebaseBackend.from('research_tasks').select('*').eq('workspace_id', id).order('created_at', { ascending: false }),
+        firebaseBackend.from('research_meetings').select('*').eq('workspace_id', id).order('created_at', { ascending: false }),
+        firebaseBackend.from('research_chapters').select('*').eq('workspace_id', id).order('chapter_order', { ascending: true }).order('title', { ascending: true }),
       ]);
       return {
         workspace: camelize(unwrap(workspace)),
@@ -542,7 +542,7 @@ function App() {
     }
 
     if (method === 'put' && workspacePath) {
-      const row = unwrap(await supabase.from('research_workspaces').update({
+      const row = unwrap(await firebaseBackend.from('research_workspaces').update({
         title: data.title,
         research_title: data.researchTitle || '',
         institution: data.institution || '',
@@ -551,7 +551,7 @@ function App() {
       return { workspace: camelize(row) };
     }
     if (method === 'delete' && workspacePath) {
-      const deleted = unwrap(await supabase.from('research_workspaces').delete().eq('id', workspacePath[1]).select('id').single());
+      const deleted = unwrap(await firebaseBackend.from('research_workspaces').delete().eq('id', workspacePath[1]).select('id').single());
       return { deleted: !!deleted };
     }
 
@@ -559,7 +559,7 @@ function App() {
       const user = await currentUser();
       const chapterTitle = String(data.title || '').trim();
       if (!chapterTitle) throw new Error('Chapter name is required.');
-      const row = unwrap(await supabase.from('research_chapters').insert({
+      const row = unwrap(await firebaseBackend.from('research_chapters').insert({
         workspace_id: data.workspaceId,
         title: chapterTitle,
         chapter_order: Number(data.chapterOrder) || 0,
@@ -571,7 +571,7 @@ function App() {
     const sectionPath = url.match(/^\/api\/sections\/([^/]+)$/);
     if (method === 'post' && url === '/api/sections') {
       const user = await currentUser();
-      const row = unwrap(await supabase.from('research_sections').insert({
+      const row = unwrap(await firebaseBackend.from('research_sections').insert({
         workspace_id: data.workspaceId,
         title: String(data.title || '').trim(),
         content: data.content || '',
@@ -584,7 +584,7 @@ function App() {
     }
     if (method === 'put' && sectionPath) {
       const user = await currentUser();
-      const row = unwrap(await supabase.from('research_sections').update({
+      const row = unwrap(await firebaseBackend.from('research_sections').update({
         title: data.title,
         content: data.content || '',
         chapter: String(data.chapter || 'Chapter 1').trim() || 'Chapter 1',
@@ -595,7 +595,7 @@ function App() {
       return { section: camelize(row) };
     }
     if (method === 'delete' && sectionPath) {
-      const result = await supabase.from('research_sections').delete().eq('id', sectionPath[1]);
+      const result = await firebaseBackend.from('research_sections').delete().eq('id', sectionPath[1]);
       if (result.error) throw new Error(result.error.message);
       return { deleted: true };
     }
@@ -603,7 +603,7 @@ function App() {
     const taskPath = url.match(/^\/api\/tasks\/([^/]+)$/);
     if (method === 'post' && url === '/api/tasks') {
       const user = await currentUser();
-      const row = unwrap(await supabase.from('research_tasks').insert({
+      const row = unwrap(await firebaseBackend.from('research_tasks').insert({
         workspace_id: data.workspaceId,
         title: String(data.title || '').trim(),
         description: data.description || '',
@@ -617,7 +617,7 @@ function App() {
       return { task: camelize(row) };
     }
     if (method === 'put' && taskPath) {
-      const row = unwrap(await supabase.from('research_tasks').update({
+      const row = unwrap(await firebaseBackend.from('research_tasks').update({
         title: data.title,
         description: data.description || '',
         assignee_id: data.assigneeId || null,
@@ -630,7 +630,7 @@ function App() {
       return { task: camelize(row) };
     }
     if (method === 'delete' && taskPath) {
-      const result = await supabase.from('research_tasks').delete().eq('id', taskPath[1]);
+      const result = await firebaseBackend.from('research_tasks').delete().eq('id', taskPath[1]);
       if (result.error) throw new Error(result.error.message);
       return { deleted: true };
     }
@@ -638,7 +638,7 @@ function App() {
     const meetingPath = url.match(/^\/api\/meetings\/([^/]+)$/);
     if (method === 'post' && url === '/api/meetings') {
       const user = await currentUser();
-      const row = unwrap(await supabase.from('research_meetings').insert({
+      const row = unwrap(await firebaseBackend.from('research_meetings').insert({
         workspace_id: data.workspaceId,
         title: String(data.title || '').trim(),
         date: data.date || '',
@@ -649,7 +649,7 @@ function App() {
       return { meeting: camelize(row) };
     }
     if (method === 'put' && meetingPath) {
-      const row = unwrap(await supabase.from('research_meetings').update({
+      const row = unwrap(await firebaseBackend.from('research_meetings').update({
         title: data.title,
         date: data.date || '',
         agenda: Array.isArray(data.agenda) ? data.agenda : [],
@@ -658,7 +658,7 @@ function App() {
       return { meeting: camelize(row) };
     }
     if (method === 'delete' && meetingPath) {
-      const result = await supabase.from('research_meetings').delete().eq('id', meetingPath[1]);
+      const result = await firebaseBackend.from('research_meetings').delete().eq('id', meetingPath[1]);
       if (result.error) throw new Error(result.error.message);
       return { deleted: true };
     }
@@ -722,9 +722,9 @@ function App() {
     const avatarUrl = metadata.avatar_url || metadata.picture || metadata.photo_url || metadata.image_url || '';
     const displayName = metadata.full_name || metadata.name || sessionUser.email || 'Researcher';
     if (avatarUrl) {
-      await supabase.from('research_member_profiles').upsert({ workspace_id: x.id, user_id: sessionUser.id, display_name: displayName, avatar_url: avatarUrl, updated_at: new Date().toISOString() }, { onConflict: 'workspace_id,user_id' });
+      await firebaseBackend.from('research_member_profiles').upsert({ workspace_id: x.id, user_id: sessionUser.id, display_name: displayName, avatar_url: avatarUrl, updated_at: new Date().toISOString() }, { onConflict: 'workspace_id,user_id' });
     }
-    const profileResult = await supabase.from('research_member_profiles').select('user_id, display_name, avatar_url').eq('workspace_id', x.id);
+    const profileResult = await firebaseBackend.from('research_member_profiles').select('user_id, display_name, avatar_url').eq('workspace_id', x.id);
     const profileRows = profileResult.error ? [] : (profileResult.data || []);
     W(d.workspace);
     M((d.members || []).map((member: any) => {
@@ -736,7 +736,7 @@ function App() {
     CM(savedMessages);
     T(d.tasks || []);
     MT(d.meetings || []);
-    const notificationResult = await supabase.from('research_notifications').select('*').eq('recipient_id', sessionUser.id).order('created_at', { ascending: false }).limit(25);
+    const notificationResult = await firebaseBackend.from('research_notifications').select('*').eq('recipient_id', sessionUser.id).order('created_at', { ascending: false }).limit(25);
     if (!notificationResult.error) NOTIFS(camelize(notificationResult.data || []));
     SCHAPTER((d.sections || [])[0]?.chapter || 'Chapter 1');
     EXPCHAPTER('All chapters');
@@ -745,8 +745,8 @@ function App() {
   useEffect(() => {
     let active = true;
     let loadedForUser = '';
-    // Keep Supabase's auth callback synchronous. Fetch data only after it returns.
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+    // Keep Firebase's auth callback synchronous. Fetch data only after it returns.
+    const { data: authListener } = firebaseBackend.auth.onAuthStateChange((event, session) => {
       if (!active) return;
       const nextUser = session?.user;
       U(nextUser ? userView(nextUser) : null);
@@ -785,11 +785,11 @@ function App() {
   }, []);
   useEffect(() => {
     if (!w?.id || !user?.userId) { ONLINE([]); return; }
-    const channel = supabase.channel('research-room-presence:' + w.id, { config: { presence: { key: user.userId } } });
+    const channel = firebaseBackend.channel('research-room-presence:' + w.id, { config: { presence: { key: user.userId } } });
     const syncPresence = () => ONLINE(Object.keys(channel.presenceState()));
     channel.on('presence', { event: 'sync' }, syncPresence).on('presence', { event: 'join' }, syncPresence).on('presence', { event: 'leave' }, syncPresence)
       .subscribe(status => { if (status === 'SUBSCRIBED') { void channel.track({ user_id: user.userId, online: true }); syncPresence(); } });
-    return () => { void channel.untrack(); void supabase.removeChannel(channel); ONLINE(ids => ids.filter(id => id !== user.userId)); };
+    return () => { void channel.untrack(); void firebaseBackend.removeChannel(channel); ONLINE(ids => ids.filter(id => id !== user.userId)); };
   }, [w?.id, user?.userId]);
   const switchWorkspace = (workspaceId: string) => {
     const selected = spaces.find(space => space.id === workspaceId);
@@ -840,7 +840,7 @@ function App() {
   };
   const signin = () =>
     run(async () => {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await firebaseBackend.auth.signInWithPassword({
         email: authEmail.trim(),
         password: authPassword,
       });
@@ -850,7 +850,7 @@ function App() {
     });
   const signInWithGoogle = () =>
     run(async () => {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { error } = await firebaseBackend.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: getAuthRedirectUrl() },
       });
@@ -859,7 +859,7 @@ function App() {
   const signup = () =>
     run(async () => {
       if (authPassword.length < 6) throw new Error('Use a password with at least 6 characters.');
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await firebaseBackend.auth.signUp({
         email: authEmail.trim(),
         password: authPassword,
         options: {
@@ -939,7 +939,7 @@ function App() {
     }, 'Sample structure imported. Existing sections were kept.');
   };
   const signout = async () => {
-    const { error } = await supabase.auth.signOut();
+    const { error } = await firebaseBackend.auth.signOut();
     if (error) E(error.message);
     U(null);
     W(null);
@@ -1086,7 +1086,7 @@ function App() {
   const saveMeetingNotes = (meeting: Mt, notes: string) => run(async () => { if (!isOwner) throw new Error('Only the workspace owner / leader can edit meeting notes.'); const updated = { ...meeting, notes }; await call('put', '/api/meetings/' + meeting.id, updated); MT(current => current.map(item => item.id === meeting.id ? updated : item)); }, 'Meeting notes saved.');
   const openNotification = (notice: ResearchNotification) => run(async () => {
     const target = spaces.find(space => space.id === notice.workspaceId); if (target && target.id !== w?.id) await load(target);
-    const readAt = notice.readAt || new Date().toISOString(); const result = await supabase.from('research_notifications').update({ read_at: readAt }).eq('id', notice.id).eq('recipient_id', user!.userId); if (result.error) throw result.error;
+    const readAt = notice.readAt || new Date().toISOString(); const result = await firebaseBackend.from('research_notifications').update({ read_at: readAt }).eq('id', notice.id).eq('recipient_id', user!.userId); if (result.error) throw result.error;
     NOTIFS(items => items.map(item => item.id === notice.id ? { ...item, readAt } : item));
     const metadata = notice.metadata || {};
     const topic = typeof metadata.topic === 'string' ? metadata.topic : '';
@@ -1102,19 +1102,19 @@ function App() {
     }
     SHOW_NOTIFICATIONS(false);
   });
-  const markAllNotificationsRead = () => run(async () => { const readAt = new Date().toISOString(); const result = await supabase.from('research_notifications').update({ read_at: readAt }).eq('recipient_id', user!.userId).is('read_at', null); if (result.error) throw result.error; NOTIFS(items => items.map(item => item.readAt ? item : { ...item, readAt })); }, 'Notifications marked as read.');
+  const markAllNotificationsRead = () => run(async () => { const readAt = new Date().toISOString(); const result = await firebaseBackend.from('research_notifications').update({ read_at: readAt }).eq('recipient_id', user!.userId).is('read_at', null); if (result.error) throw result.error; NOTIFS(items => items.map(item => item.readAt ? item : { ...item, readAt })); }, 'Notifications marked as read.');
   const requestBrowserNotifications = async () => { if (!('Notification' in window)) { MSG('This browser does not support desktop notifications.'); return; } try { const permission = await window.Notification.requestPermission(); MSG(permission === 'granted' ? 'Desktop notifications enabled.' : 'Desktop alerts were not enabled; in-app notifications still work.'); } catch { MSG('Could not enable desktop notifications in this browser.'); } };
   const saveProfile = (e: any) => {
     e.preventDefault();
     return run(async () => {
       const displayName = profileName.trim();
       if (!displayName) throw new Error('Your display name is required.');
-      const authUpdate = await supabase.auth.updateUser({ data: { full_name: displayName, avatar_url: profileAvatar } });
+      const authUpdate = await firebaseBackend.auth.updateUser({ data: { full_name: displayName, avatar_url: profileAvatar } });
       if (authUpdate.error) throw authUpdate.error;
       const current = authUpdate.data.user || await currentUser();
       const workspaceIds = [...new Set([...spaces.map(space => space.id), ...(w?.id ? [w.id] : [])])];
       if (workspaceIds.length) {
-        const savedProfiles = await supabase.from('research_member_profiles').upsert(
+        const savedProfiles = await firebaseBackend.from('research_member_profiles').upsert(
           workspaceIds.map(workspaceId => ({ workspace_id: workspaceId, user_id: current.id, display_name: displayName, avatar_url: profileAvatar, updated_at: new Date().toISOString() })),
           { onConflict: 'workspace_id,user_id' }
         );
@@ -1216,11 +1216,11 @@ function App() {
   const unreadNotificationCount = notifications.filter(item => !item.readAt).length;
   useEffect(() => {
     if (!user?.userId) return;
-    const channel = supabase.channel('research-notifications-' + user.userId).on('postgres_changes', { event:'INSERT', schema:'public', table:'research_notifications', filter:'recipient_id=eq.' + user.userId }, payload => {
+    const channel = firebaseBackend.channel('research-notifications-' + user.userId).on('postgres_changes', { event:'INSERT', schema:'public', table:'research_notifications', filter:'recipient_id=eq.' + user.userId }, payload => {
       const incoming = camelize(payload.new) as ResearchNotification; NOTIFS(items => [incoming, ...items.filter(item => item.id !== incoming.id)].slice(0,25)); MSG(incoming.content);
       if ('Notification' in window && window.Notification.permission === 'granted') { try { new window.Notification('Research Room', { body:incoming.content }); } catch { /* in-app notice remains visible */ } }
     }).subscribe();
-    return () => { void supabase.removeChannel(channel); };
+    return () => { void firebaseBackend.removeChannel(channel); };
   }, [user?.userId]);
   const nav = [
     ['Workspaces', Layers3],
