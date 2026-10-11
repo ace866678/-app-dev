@@ -1849,3 +1849,71 @@ body::after {
 
 @media(max-width:1100px){.workspace-empty-shell{grid-template-columns:1fr}.workspace-empty-brand{min-height:auto;padding:28px 30px;gap:35px}.workspace-empty-brand>div:nth-child(2){display:none}.workspace-empty-content{padding:25px 22px}.workspace-empty-options{grid-template-columns:1fr 1fr}}
 @media(max-width:760px){.workspace-action-row{align-items:flex-start;flex-direction:column}.workspace-empty-options{grid-template-columns:1fr}.workspace-empty-brand .workspace-empty-foot{display:none}.chat-header-prominent{align-items:flex-start;flex-wrap:wrap;gap:11px;padding:16px}.chat-room-title{font-size:21px!important}.chat-header-controls{width:100%;justify-content:space-between;margin-left:59px;margin-top:-3px}.posting-topic-chip{align-items:flex-start}.chat-workspace-layout{grid-template-columns:1fr!important}.topics-rail .topic-nav-list{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))}.topic-nav-label{font-size:12px!important}.topics-rail{padding:13px!important}}
+
+/* Real flowing, shape-morphing waves layered above the pastel wash */
+.auth,
+.welcome,
+.shell {
+  position: relative;
+  isolation: isolate;
+}
+.fluid-wave-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: .92;
+  contain: paint;
+}
+.fluid-wave-backdrop svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.fluid-wave-lilac,
+.fluid-wave-mint,
+.fluid-wave-pink {
+  transform-box: fill-box;
+  transform-origin: center;
+  will-change: d, transform;
+}
+.fluid-wave-lilac {
+  animation: fluid-wave-sway-a 19s ease-in-out infinite alternate;
+}
+.fluid-wave-mint {
+  animation: fluid-wave-sway-b 23s ease-in-out infinite alternate;
+}
+.fluid-wave-pink {
+  animation: fluid-wave-sway-c 21s ease-in-out infinite alternate;
+}
+@keyframes fluid-wave-sway-a {
+  from { transform: translate3d(-1.2%, -1%, 0) scale(1.01); }
+  to { transform: translate3d(1.1%, 1.2%, 0) scale(1.045); }
+}
+@keyframes fluid-wave-sway-b {
+  from { transform: translate3d(1.4%, .5%, 0) scale(1.03); }
+  to { transform: translate3d(-1.1%, -1.2%, 0) scale(1.055); }
+}
+@keyframes fluid-wave-sway-c {
+  from { transform: translate3d(-.8%, 1.2%, 0) scale(1.04); }
+  to { transform: translate3d(1.2%, -.8%, 0) scale(1.07); }
+}
+.auth > :not(.fluid-wave-backdrop),
+.welcome > :not(.fluid-wave-backdrop),
+.shell > .main {
+  position: relative;
+  z-index: 1;
+}
+@media (max-width: 700px) {
+  .fluid-wave-backdrop {
+    opacity: .78;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fluid-wave-backdrop {
+    display: none !important;
+  }
+}
+
