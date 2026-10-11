@@ -3,6 +3,8 @@ import { supabase } from './supabase';
 import ResearchChat from './ResearchChat';
 import ResearchMeetings from './ResearchMeetings';
 import ResearchNotifications from './ResearchNotifications';
+import WorkspaceManagement from './WorkspaceManagement';
+import WorkspaceEmptyState from './WorkspaceEmptyState';
 import {
   BookOpen,
   LayoutDashboard,
@@ -459,6 +461,15 @@ function App() {
       return { transfer: result.data };
     }
 
+    if (method === 'post' && url === '/api/workspaces/leave') {
+      const user = await currentUser();
+      const member = unwrap(await supabase.from('research_members').select('id, role').eq('workspace_id', data.workspaceId).eq('user_id', user.id).single());
+      if (member.role === 'owner') throw new Error('Transfer ownership before leaving, or delete the workspace.');
+      const result = await supabase.from('research_members').delete().eq('workspace_id', data.workspaceId).eq('user_id', user.id).select('id').single();
+      unwrap(result);
+      return { left: true };
+    }
+
     if (method === 'post' && url === '/api/messages') {
       const user = await currentUser();
       const row = unwrap(await supabase.from('research_messages').insert({
@@ -498,6 +509,10 @@ function App() {
         program: data.program || '',
       }).eq('id', workspacePath[1]).select('*').single());
       return { workspace: camelize(row) };
+    }
+    if (method === 'delete' && workspacePath) {
+      const deleted = unwrap(await supabase.from('research_workspaces').delete().eq('id', workspacePath[1]).select('id').single());
+      return { deleted: !!deleted };
     }
 
     const sectionPath = url.match(/^\/api\/sections\/([^/]+)$/);
@@ -775,6 +790,22 @@ function App() {
       }
       U(userView(data.user));
     }, 'Account created.');
+  const leaveWorkspace = () => run(async () => {
+    if (isOwner) throw new Error('Transfer ownership before leaving, or delete the workspace.');
+    const workspaceId = w!.id;
+    await call('post', '/api/workspaces/leave', { workspaceId });
+    const sessionUser = await currentUser();
+    try { window.localStorage.removeItem('research-room:selected-workspace:' + sessionUser.id); } catch { /* optional storage */ }
+    CM([]); P('Overview'); await reloadSpaces();
+  }, 'You left the workspace.');
+  const deleteWorkspace = () => run(async () => {
+    if (!isOwner) throw new Error('Only the workspace owner can delete it.');
+    const workspaceId = w!.id;
+    const sessionUser = await currentUser();
+    await call('delete', '/api/workspaces/' + workspaceId);
+    try { window.localStorage.removeItem('research-room:selected-workspace:' + sessionUser.id); } catch { /* optional storage */ }
+    CM([]); P('Overview'); await reloadSpaces();
+  }, 'Workspace deleted.');
   const transferOwnership = (newOwnerId: string) => run(async () => {
     if (!isOwner) throw new Error('Only the current owner can transfer ownership.');
     const target = members.find(member => member.userId === newOwnerId);
@@ -1225,6 +1256,17 @@ function App() {
         {msg && <div className="toast">{msg}</div>}
       </main>
     );
+  if (!w) return <WorkspaceEmptyState
+    form={wf}
+    code={code}
+    busy={busy}
+    error={err}
+    onFormChange={(key, value) => WF(current => ({ ...current, [key]: value }))}
+    onCodeChange={CODE}
+    onCreate={() => void create()}
+    onJoin={() => void join()}
+    onDismissError={() => E('')}
+  />;
   return (
     <div className="shell">
       <aside className={'sidebar ' + (mobile ? 'shown' : '')}>
@@ -1881,6 +1923,7 @@ function App() {
                   institution’s latest official requirements.
                 </p>
               </section>
+              <WorkspaceManagement isOwner={isOwner} busy={busy} onLeave={() => void leaveWorkspace()} onDelete={() => void deleteWorkspace()} />
             </>
           )}
         </div>
