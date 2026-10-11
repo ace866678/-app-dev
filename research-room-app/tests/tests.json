@@ -89,7 +89,7 @@
       "dashboard upcoming deadlines",
       "owner-only task creation",
       "owner-only deadline changes",
-      "live team presence on dashboard",
+      "online and offline member avatars beneath Current Research",
       "online and offline member status"
     ],
     "description": "Verifies owners can create tasks and assign deadlines while members can view tasks and update status without creating tasks or deadlines.",
@@ -99,9 +99,9 @@
       "Actor B checks that task creation is owner-only",
       "Actor A marks the task In progress and checks the dashboard deadline list",
       "Refresh and reopen Tasks",
-      "Check the dashboard Team presence panel and verify each team member has an online or offline label."
+      "Check the avatars beneath Current Research and verify the status dots and online/offline count reflect member status."
     ],
-    "expected": "Only the owner can create tasks or set/change deadlines. Members can see the shared task and update status; task deadlines persist after refresh."
+    "expected": "Only the owner can create tasks or set/change deadlines. Members can see the shared task and update status; task deadlines persist after refresh. Member avatars beneath Current Research show online/offline dots and counts without a separate presence panel."
   },
   {
     "name": "Chat with group members and retain messages",
