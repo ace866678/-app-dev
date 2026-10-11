@@ -1998,3 +1998,218 @@ function App() {
                     </p>
                   )}
                 </section>
+              </div>
+            </>
+          )}
+          {page === 'Meetings' && <ResearchMeetings canManage={isOwner} meetings={meetings} expanded={meetingsExpanded} onToggleExpanded={() => MEETINGS_EXPANDED(v => !v)} selected={selectedMeeting} onSelect={selectMeeting} onDelete={id => CONF(id)} selectedAgenda={selectedMeeting && agendaDraftForMeetingId === selectedMeeting.id ? meetingAgendaDraft : (selectedMeeting?.agenda || [])} onChangeSelectedAgenda={(items,id) => { MADI(id); MAD(items); }} onSaveAgenda={() => void saveMeetingAgenda()} onSaveNotes={saveMeetingNotes} form={mf} onFormChange={(key,value) => MF(current => ({...current,[key]:value}))} agenda={agendaItems} onNewAgendaChange={AITEMS} onCreate={() => void addMeeting()} busy={busy} onDashboard={() => P('Overview')} />}
+          {page === 'Chat' && <ResearchChat workspaceTitle={w.title} memberCount={members.length} refresh={() => void refreshChat()} search={chatSearch} onSearch={CSEARCH} filter={chatFilter} onFilter={CFILTER} messages={chatMessages} visible={visibleChatMessages} userId={user.userId} topics={chatTopics} chapterTopics={chapterOptions} onOpenChapter={openChapterDocument} topic={chatTopic} onTopic={CTopic} draft={chatDraft} onDraft={CD} busy={busy} send={ids => void sendChat(ids)} members={members} onlineUserIds={onlineUserIds} onCreateTopic={createOrOpenChatTopic} onNavigate={target => P(target)} /> }
+          {page === 'Team' && (
+            <>
+              <div className="heading">
+                <div>
+                  <small>COLLABORATION</small>
+                  <h1>Your research team</h1>
+                  <p>
+                    Invite groupmates using the code. Each person signs in with
+                    their own account.
+                  </p>
+                </div>
+                <button className="primary" onClick={copy}>
+                  <Copy size={15} /> Copy join code
+                </button>
+              </div>
+              <section className="panel invite-panel">
+                <small>WORKSPACE JOIN CODE</small>
+                <strong>{w.joinCode}</strong>
+                <p>Share this code privately with your groupmates.</p>
+                <button className="secondary" onClick={copy}>
+                  <Copy size={15} /> Copy code
+                </button>
+              </section>
+              <section className="panel">
+                <h3>Members · {members.length}</h3>
+                {members.map((m, i) => (
+                  <div className="member" key={m.id}>
+                    <span className="member-avatar">
+                      <AvatarArt value={m.avatarUrl} name={m.name} />
+                      <i className={'presence-dot ' + (onlineUserIds.includes(m.userId) ? 'online' : 'offline')} />
+                    </span>
+                    <span className="member-identity">
+                      <b>{m.name || 'Researcher'} {m.userId === user.userId && <small>(You)</small>}</b>
+                      <small>{m.email || 'Signed-in member'}</small>
+                    </span>
+                    <em className={'role-pill ' + (m.role === 'owner' ? 'owner' : 'member')}>{m.role === 'owner' ? 'Owner / Leader' : 'Member'}</em>
+                    <em className={'presence-status ' + (onlineUserIds.includes(m.userId) ? 'online' : 'offline')}>{onlineUserIds.includes(m.userId) ? 'Online' : 'Offline'}</em>
+                    {isOwner && m.userId !== user.userId && <button className="secondary transfer-owner-button" onClick={() => TRANSFER(m)}><ArrowLeftRight size={13} /> Transfer ownership</button>}
+                  </div>
+                ))}
+              </section>
+            </>
+          )}
+          {page === 'Settings' && (
+            <>
+              <div className="heading">
+                <div>
+                  <small>WORKSPACE DETAILS</small>
+                  <h1>Research settings</h1>
+                  <p>Keep your institution and thesis title consistent.</p>
+                </div>
+              </div>
+              <section className="panel profile-editor">
+                <div className="profile-editor-heading"><div><h3>Your profile</h3><p>Choose a display name and one of ten original geometric icon avatars. Your choice appears beside chat messages and across your team.</p></div><span className="profile-editor-preview"><AvatarArt value={profileAvatar} name={profileName || user.name || 'Researcher'} /></span></div>
+                <form onSubmit={saveProfile}>
+                  <label>Display name<input required maxLength={80} value={profileName} onChange={event => PROFILE_NAME(event.target.value)} placeholder="Your name" /></label>
+                  <div className="profile-avatar-prompt"><strong>Choose an icon avatar</strong><small>Simple original shapes, saved to your profile</small></div>
+                  <div className="avatar-choice-grid" role="group" aria-label="Choose one of ten profile icon avatars">
+                    {AVATAR_OPTIONS.map(avatar => {
+                      const value = 'shape-avatar:' + avatar.id;
+                      return <button type="button" key={avatar.id} className={'avatar-choice' + (profileAvatar === value ? ' selected' : '')} aria-pressed={profileAvatar === value} onClick={() => PROFILE_AVATAR(value)}>
+                        <AvatarArt value={value} name={avatar.name} />
+                        <span>{avatar.name}</span>
+                      </button>;
+                    })}
+                  </div>
+                  <button className="primary" type="submit" disabled={busy}><Save size={15} /> Save profile</button>
+                </form>
+              </section>
+              <section className="panel settings">
+                <h3>Institution & thesis details</h3>
+                <form onSubmit={saveSettings}>
+                  <label>
+                    Workspace name
+                    <input
+                      required
+                      value={w.title}
+                      onChange={e => W({ ...w, title: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Research title
+                    <input
+                      value={w.researchTitle || ''}
+                      onChange={e => W({ ...w, researchTitle: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    School / institution
+                    <input
+                      value={w.institution || ''}
+                      onChange={e => W({ ...w, institution: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Degree program
+                    <input
+                      value={w.program || ''}
+                      onChange={e => W({ ...w, program: e.target.value })}
+                    />
+                  </label>
+                  <button className="primary" disabled={busy}>
+                    <Save size={15} /> Save settings
+                  </button>
+                </form>
+                <p className="tip">
+                  The supplied template is a writing structure. Verify page
+                  layout, signatures, CVs, and citation style against your
+                  institution’s latest official requirements.
+                </p>
+              </section>
+              <WorkspaceManagement isOwner={isOwner} busy={busy} onLeave={() => void leaveWorkspace()} onDelete={() => void deleteWorkspace()} />
+            </>
+          )}
+        </div>
+      </main>
+      {modal === 'chapter' && (
+        <div className="shade">
+          <form className="modal" onSubmit={event => { event.preventDefault(); void createChapter(); }}>
+            <button type="button" className="close" onClick={() => MOD('')}><X size={18} /></button>
+            <h2>Add a chapter</h2>
+            <p>Chapter names are shared with Document and Chat. You can add sections to the new chapter next.</p>
+            <label>Chapter name<input required maxLength={100} autoFocus value={chapterDraft} onChange={event => CHAPTER_DRAFT(event.target.value)} placeholder="e.g. Chapter 3" /></label>
+            {err && <p className="error">{err}</p>}
+            <div className="actions"><button type="button" className="secondary" onClick={() => MOD('')}>Cancel</button><button className="primary" type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create chapter'}</button></div>
+          </form>
+        </div>
+      )}
+      {(modal === 'create' || modal === 'join') && (
+        <div className="shade">
+          <form className="modal" onSubmit={e => { e.preventDefault(); modal === 'create' ? create() : join(); }}>
+            <button type="button" className="close" onClick={() => MOD('')}><X size={18} /></button>
+            <h2>{modal === 'create' ? 'Create another workspace' : 'Join a workspace'}</h2>
+            {modal === 'create' ? <>
+              {[
+                ['Workspace name', 'title'],
+                ['Thesis title', 'researchTitle'],
+                ['School / institution', 'institution'],
+                ['Degree program', 'program'],
+              ].map(([label, key]) => (
+                <label key={key}>
+                  {label}
+                  <input required={key === 'title'} value={(wf as any)[key]} onChange={e => WF({ ...wf, [key]: e.target.value })} />
+                </label>
+              ))}
+            </> : <label>Workspace join code
+              <input required value={code} onChange={e => CODE(e.target.value.toUpperCase())} maxLength={12} placeholder="Ask the owner for the code" />
+            </label>}
+            <div className="actions">
+              <button type="button" className="secondary" onClick={() => MOD('')}>Cancel</button>
+              <button className="primary" type="submit" disabled={busy}>{busy ? 'Please wait…' : modal === 'create' ? 'Create workspace' : 'Join workspace'}</button>
+            </div>
+            {err && <p className="error">{err}</p>}
+          </form>
+        </div>
+      )}
+      {transferTarget && (
+        <div className="shade">
+          <div className="modal">
+            <h2>Transfer workspace ownership?</h2>
+            <p>You are about to make <strong>{transferTarget.name}</strong> the owner of <strong>{w.title}</strong>. They will control task creation and deadlines. Your account will remain a member. You will no longer have owner controls after this transfer.</p>
+            <div className="actions">
+              <button className="secondary" onClick={() => TRANSFER(null)}>Cancel</button>
+              <button className="primary" disabled={busy} onClick={() => void transferOwnership(transferTarget.userId)}>Confirm transfer</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirm && (
+        <div className="shade">
+          <div className="modal">
+            <h2>Delete this item?</h2>
+            <p>This cannot be undone.</p>
+            <div className="actions">
+              <button className="secondary" onClick={() => CONF('')}>
+                Cancel
+              </button>
+              <button
+                className="primary red"
+                onClick={() =>
+                  run(async () => {
+                    if (page === 'Document') {
+                      await call('delete', '/api/sections/' + confirm);
+                      S(a => a.filter(s => s.id !== confirm));
+                      if (sid === confirm) {
+                        SID('');
+                        ST('');
+                        SC('');
+                      }
+                    } else if (page === 'Tasks') {
+                      await call('delete', '/api/tasks/' + confirm);
+                      T(a => a.filter(t => t.id !== confirm));
+                    } else {
+                      await call('delete', '/api/meetings/' + confirm);
+                      MT(a => a.filter(m => m.id !== confirm));
+                    }
+                    CONF('');
+                  }, 'Item deleted.')
+                }
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+export default App;
