@@ -101,9 +101,12 @@
       "Actor A opens Chat and sends a message",
       "Actor B opens Chat or refreshes messages",
       "Choose Literature Review as the topic and send a message",
-      "Filter by Literature Review and search for a keyword"
+      "Filter by Literature Review and search for a keyword",
+      "Verify the chat rail lists research topics only",
+      "Switch topics and confirm the selected topic is prominent in the chat header",
+      "Confirm notifications remain in the global notification center, not the chat rail"
     ],
-    "expected": "Messages retain their topic, members can filter/search research discussions, and messages persist across refresh."
+    "expected": "Messages retain their topic, members can filter/search research discussions, and messages persist across refresh. Chat rail contains topics only; selected topic is prominent and notifications remain global."
   },
   {
     "name": "Join a workspace and read shared research content",
@@ -127,8 +130,11 @@
       "Join an existing workspace from a second account and open Document",
       "Create a meeting with a custom agenda and update one agenda point",
       "Send a chat message and confirm the other member receives a notification",
-      "Choose a topic from the right-hand list and insert an emoji"
+      "Choose a topic from the right-hand list and insert an emoji",
+      "As a non-owner, leave a workspace and verify it disappears from the workspace selector",
+      "As the owner, confirm workspace deletion and verify associated content is removed",
+      "After leaving the last workspace, verify create/join forms are available"
     ],
-    "expected": "Joining members see the same workspace content; custom agendas persist; other members receive notifications; chat topics are visible on the right and emojis can be inserted."
+    "expected": "Joining members see the same workspace content; custom agendas persist; other members receive notifications; chat topics are visible on the right and emojis can be inserted. Non-owners can leave, only owners can delete, and an empty-workspace page supports creating or joining another workspace."
   }
 ]
