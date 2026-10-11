@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from './supabase';
+import './collaboration.css';
 import ResearchChat from './ResearchChat';
 import ResearchMeetings from './ResearchMeetings';
 import ResearchNotifications from './ResearchNotifications';
@@ -26,7 +27,6 @@ import {
   MessageCircle,
   Send,
   RefreshCw,
-  MapPin,
   FileDown,
   GripVertical,
   Search,
@@ -48,8 +48,9 @@ type M = {
   name: string;
   email: string;
   role: string;
+  avatarUrl?: string;
 };
-type S = { id: string; title: string; content: string; order: number; chapter: string };
+type S = { id: string; title: string; content: string; order: number; chapter: string; createdBy?: string | null; updatedBy?: string | null; createdAt?: string | null; updatedAt?: string | null };
 type T = {
   id: string;
   title: string;
@@ -319,6 +320,7 @@ const userView = (u: any) => ({
   userId: u.id,
   email: u.email || '',
   name: u.user_metadata?.full_name || u.user_metadata?.name || u.email || 'Researcher',
+  avatarUrl: u.user_metadata?.avatar_url || u.user_metadata?.picture || u.user_metadata?.photo_url || u.user_metadata?.image_url || '',
 });
 const getAuthRedirectUrl = () => {
   const host = window.location.hostname;
@@ -335,6 +337,7 @@ function App() {
     [sections, S] = useState<S[]>([]),
     [tasks, T] = useState<T[]>([]),
     [meetings, MT] = useState<Mt[]>([]);
+  const [onlineUserIds, ONLINE] = useState<string[]>([]);
   const [chatMessages, CM] = useState<ChatMessage[]>([]);
   const [chatDraft, CD] = useState('');
   const [chatTopic, CTopic] = useState('General');
@@ -389,13 +392,14 @@ function App() {
     }),
     [search, SEARCH] = useState(''),
     [confirm, CONF] = useState('');
-  const [mapQuery, MAPQ] = useState('Philippines');
-  const [activeMapQuery, AMQ] = useState('Philippines');
   const isOwner = members.some(member => member.userId === user?.userId && member.role === 'owner');
   const visibleChatMessages = chatMessages.filter(message =>
     (chatFilter === 'All topics' || (message.topic || 'General') === chatFilter) &&
     message.text.toLowerCase().includes(chatSearch.toLowerCase().trim())
   );
+  const activeSectionMeta = sections.find(section => section.id === sid);
+  const memberDisplayName = (userId?: string | null) => userId ? (members.find(member => member.userId === userId)?.name || (userId === user?.userId ? user?.name : 'Former member')) : 'Not recorded';
+  const formatSectionDate = (value?: string | null) => value ? new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Not recorded';
   const unwrap = (result: any) => {
     if (result.error) throw new Error(result.error.message || 'Supabase request failed.');
     return result.data;
@@ -524,6 +528,7 @@ function App() {
         content: data.content || '',
         chapter: String(data.chapter || 'Chapter 1').trim() || 'Chapter 1',
         order: Number(data.order) || 0,
+        created_by: user.id,
         updated_by: user.id,
       }).select('*').single());
       return { section: camelize(row) };
@@ -644,17 +649,19 @@ function App() {
     } catch {
       // The database remains the source of truth when browser storage is unavailable.
     }
-    const savedMapQuery = (() => {
-      try {
-        return window.localStorage.getItem('research-room-map:' + x.id) || d.workspace.institution || 'Philippines';
-      } catch {
-        return d.workspace.institution || 'Philippines';
-      }
-    })();
-    MAPQ(savedMapQuery);
-    AMQ(savedMapQuery);
+    const metadata = sessionUser.user_metadata || {};
+    const avatarUrl = metadata.avatar_url || metadata.picture || metadata.photo_url || metadata.image_url || '';
+    const displayName = metadata.full_name || metadata.name || sessionUser.email || 'Researcher';
+    if (avatarUrl) {
+      await supabase.from('research_member_profiles').upsert({ workspace_id: x.id, user_id: sessionUser.id, display_name: displayName, avatar_url: avatarUrl, updated_at: new Date().toISOString() }, { onConflict: 'workspace_id,user_id' });
+    }
+    const profileResult = await supabase.from('research_member_profiles').select('user_id, display_name, avatar_url').eq('workspace_id', x.id);
+    const profileRows = profileResult.error ? [] : (profileResult.data || []);
     W(d.workspace);
-    M(d.members || []);
+    M((d.members || []).map((member: any) => {
+      const profile = profileRows.find((item: any) => item.user_id === member.userId);
+      return { ...member, name: member.name || profile?.display_name || 'Researcher', avatarUrl: profile?.avatar_url || (member.userId === sessionUser.id ? avatarUrl : '') };
+    }));
     S((d.sections || []).sort((a: S, b: S) => a.order - b.order));
     T(d.tasks || []);
     MT(d.meetings || []);
@@ -705,6 +712,14 @@ function App() {
       authListener.subscription.unsubscribe();
     };
   }, []);
+  useEffect(() => {
+    if (!w?.id || !user?.userId) { ONLINE([]); return; }
+    const channel = supabase.channel('research-room-presence:' + w.id, { config: { presence: { key: user.userId } } });
+    const syncPresence = () => ONLINE(Object.keys(channel.presenceState()));
+    channel.on('presence', { event: 'sync' }, syncPresence).on('presence', { event: 'join' }, syncPresence).on('presence', { event: 'leave' }, syncPresence)
+      .subscribe(status => { if (status === 'SUBSCRIBED') { void channel.track({ user_id: user.userId, online: true }); syncPresence(); } });
+    return () => { void channel.untrack(); void supabase.removeChannel(channel); ONLINE(ids => ids.filter(id => id !== user.userId)); };
+  }, [w?.id, user?.userId]);
   const switchWorkspace = (workspaceId: string) => {
     const selected = spaces.find(space => space.id === workspaceId);
     if (!selected || selected.id === w?.id) return;
@@ -948,6 +963,7 @@ function App() {
     }, 'Task updated.');
   const addMeeting = () =>
     run(async () => {
+      if (!isOwner) throw Error('Only the workspace owner / leader can schedule meetings.');
       if (!mf.title.trim()) throw Error('Meeting title is required.');
       const d = await call('post', '/api/meetings', {
         ...mf,
@@ -960,12 +976,13 @@ function App() {
     }, 'Meeting created.');
   const selectMeeting = (meeting: Mt) => { SMI(meeting.id); MADI(meeting.id); MAD([...(meeting.agenda || [])]); };
   const saveMeetingAgenda = () => run(async () => {
+    if (!isOwner) throw new Error('Only the workspace owner / leader can edit meeting agendas.');
     const meeting = meetings.find(item => item.id === selectedMeetingId); if (!meeting) throw new Error('Choose a meeting first.');
     const agendaToSave = (agendaDraftForMeetingId === meeting.id ? meetingAgendaDraft : (meeting.agenda || [])).map(item => item.trim()).filter(Boolean);
     const updated = { ...meeting, agenda: agendaToSave }; await call('put', '/api/meetings/' + meeting.id, updated);
     MT(current => current.map(item => item.id === meeting.id ? updated : item)); MADI(meeting.id); MAD(agendaToSave);
   }, 'Meeting agenda saved.');
-  const saveMeetingNotes = (meeting: Mt, notes: string) => run(async () => { const updated = { ...meeting, notes }; await call('put', '/api/meetings/' + meeting.id, updated); MT(current => current.map(item => item.id === meeting.id ? updated : item)); }, 'Meeting notes saved.');
+  const saveMeetingNotes = (meeting: Mt, notes: string) => run(async () => { if (!isOwner) throw new Error('Only the workspace owner / leader can edit meeting notes.'); const updated = { ...meeting, notes }; await call('put', '/api/meetings/' + meeting.id, updated); MT(current => current.map(item => item.id === meeting.id ? updated : item)); }, 'Meeting notes saved.');
   const openNotification = (notice: ResearchNotification) => run(async () => {
     const target = spaces.find(space => space.id === notice.workspaceId); if (target && target.id !== w?.id) await load(target);
     const readAt = notice.readAt || new Date().toISOString(); const result = await supabase.from('research_notifications').update({ read_at: readAt }).eq('id', notice.id).eq('recipient_id', user!.userId); if (result.error) throw result.error;
@@ -1492,7 +1509,7 @@ function App() {
                   {selectedDayMeetings.map(meeting => <div className="calendar-event" key={meeting.id}><span className="event-time">{new Date(meeting.date).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}</span><span><b>{meeting.title}</b><small>Research meeting</small></span></div>)}
                   {selectedDayTasks.map(task => <div className="calendar-event deadline-event" key={task.id}><span className="event-time">Due</span><span><b>{task.title}</b><small>{task.status} · {task.assigneeName || 'Unassigned'}</small></span></div>)}
                   {!selectedDayMeetings.length && !selectedDayTasks.length && <p className="muted calendar-empty">No meetings or deadlines for this day.</p>}
-                  <button className="secondary wide calendar-add-meeting" onClick={() => { P('Meetings'); SMI(''); }}>+ Schedule a meeting</button>
+                  <button className="secondary wide calendar-add-meeting" onClick={() => { P('Meetings'); SMI(''); }}>{isOwner ? '+ Schedule a meeting' : 'View meeting schedule'}</button>
                 </section>
               </div>
               <div className="dashboard-upcoming-meetings panel">
@@ -1530,47 +1547,24 @@ function App() {
                     <p className="muted">No upcoming deadlines yet. Add a due date to a task and it will appear here.</p>
                   )}
                 </section>
-                <section className="panel map-panel">
+                <section className="panel dashboard-presence-panel">
                   <div className="panel-head">
-                    <div>
-                      <h3><MapPin size={15} /> Research location map</h3>
-                      <small>Find your school, meeting place, or field site</small>
-                    </div>
+                    <div><h3>Team presence</h3><small>{onlineUserIds.length} online · {Math.max(0, members.length - onlineUserIds.length)} offline</small></div>
+                    <Users size={18} />
                   </div>
-                  <form className="map-search" onSubmit={e => {
-                    e.preventDefault();
-                    const nextQuery = mapQuery.trim();
-                    if (!nextQuery) {
-                      E('Enter a location to show it on the map.');
-                      return;
-                    }
-                    try {
-                      window.localStorage.setItem('research-room-map:' + w.id, nextQuery);
-                    } catch {
-                      // Keep the current map available for this session.
-                    }
-                    AMQ(nextQuery);
-                    MSG('Map location updated.');
-                  }}>
-                    <input
-                      aria-label="Search map location"
-                      value={mapQuery}
-                      onChange={e => MAPQ(e.target.value)}
-                      placeholder="Search a place or address"
-                    />
-                    <button className="secondary" type="submit">Show map</button>
-                  </form>
-                  <div className="map-frame">
-                    <iframe
-                      title={'Map showing ' + activeMapQuery}
-                      src={'https://maps.google.com/maps?q=' + encodeURIComponent(activeMapQuery) + '&output=embed'}
-                      loading="lazy"
-                      referrerPolicy="no-referrer-when-downgrade"
-                    />
-                  </div>
-                  <div className="map-foot">
-                    <span>Showing: {activeMapQuery}</span>
-                    <a href={'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(activeMapQuery)} target="_blank" rel="noreferrer">Open full map ↗</a>
+                  <div className="presence-list">
+                    {members.map(member => {
+                      const online = onlineUserIds.includes(member.userId);
+                      return <div className="presence-member-row" key={member.id}>
+                        <span className="member-avatar">
+                          {member.avatarUrl ? <img src={member.avatarUrl} alt={member.name + ' profile'} referrerPolicy="no-referrer" /> : (member.name || '?').slice(0, 1).toUpperCase()}
+                          <i className={'presence-dot ' + (online ? 'online' : 'offline')} />
+                        </span>
+                        <span className="presence-member-copy"><b>{member.name || 'Researcher'}{member.userId === user.userId ? ' (You)' : ''}</b><small>{member.role === 'owner' ? 'Owner / Leader' : 'Member'}</small></span>
+                        <em className={'presence-status ' + (online ? 'online' : 'offline')}>{online ? 'Online' : 'Offline'}</em>
+                      </div>;
+                    })}
+                    {!members.length && <p className="muted">Team members will appear here when they join the workspace.</p>}
                   </div>
                 </section>
               </div>
@@ -1646,12 +1640,12 @@ function App() {
                         <small className="section-chapter-badge">{section.chapter || 'Chapter 1'}</small>
                       </button>
                     ))}
-                  <button className="secondary" onClick={() => { SID(''); ST(''); SC(''); SCHAPTER(chapterOptions[0] || 'Chapter 1'); }}>+ Custom section</button>
+                  <button className="secondary new-section-button" onClick={() => { SID(''); ST(''); SC(''); SCHAPTER(chapterOptions[0] || 'Chapter 1'); }}>+ Create new section</button>
                 </section>
                 <section className="panel editor">
                   <div className="panel-head">
-                    <div><h3>Edit section</h3><small>Changes are shared with the team</small></div>
-                    <button className="primary" onClick={saveSection} disabled={busy}><Save size={15} /> Save</button>
+                    <div><h3>{sid ? 'Edit section' : 'Create a section'}</h3><small>Changes are shared with the team</small></div>
+                    <button className="primary" onClick={saveSection} disabled={busy}><Save size={15} /> {sid ? 'Save changes' : 'Create section'}</button>
                   </div>
                   <label>Section title
                     <input value={title} onChange={e => ST(e.target.value)} placeholder="Enter section title" />
@@ -1660,10 +1654,14 @@ function App() {
                     <input list="research-chapter-options" value={sectionChapter} onChange={e => SCHAPTER(e.target.value)} placeholder="e.g. Chapter 1" />
                     <datalist id="research-chapter-options">{chapterOptions.map(chapter => <option key={chapter} value={chapter} />)}</datalist>
                   </label>
+                  <div className="section-attribution" aria-label="Section authorship and edit history">
+                    <div><span><Users size={13} /> Created by</span><strong>{activeSectionMeta ? memberDisplayName(activeSectionMeta.createdBy) : 'You'}</strong><small>{activeSectionMeta?.createdAt ? formatSectionDate(activeSectionMeta.createdAt) : activeSectionMeta ? 'Original creation time unavailable' : 'Creator is recorded when this section is saved'}</small></div>
+                    <div><span><Clock3 size={13} /> Last modified</span><strong>{activeSectionMeta ? memberDisplayName(activeSectionMeta.updatedBy) : 'After first save'}</strong><small>{activeSectionMeta?.updatedAt ? formatSectionDate(activeSectionMeta.updatedAt) : activeSectionMeta ? 'Edit time not recorded' : 'Saved changes record the editor and time'}</small></div>
+                  </div>
                   <label>Content
                     <textarea rows={20} value={content} onChange={e => SC(e.target.value)} placeholder="Write your research content here…" />
                   </label>
-                  <div className="editor-foot">{content.trim().split(/s+/).filter(Boolean).length} words {sid && <button className="danger" onClick={() => CONF(sid)}>Delete section</button>}</div>
+                  <div className="editor-foot">{content.trim().split(/\s+/).filter(Boolean).length} words {sid && <button className="danger" onClick={() => CONF(sid)}>Delete section</button>}</div>
                   <p className="tip">Writing tip: support claims with citations and explain how your study differs from previous work. Your school’s official format takes precedence.</p>
                 </section>
               </div>
@@ -1828,8 +1826,8 @@ function App() {
               </div>
             </>
           )}
-          {page === 'Meetings' && <ResearchMeetings meetings={meetings} expanded={meetingsExpanded} onToggleExpanded={() => MEETINGS_EXPANDED(v => !v)} selected={selectedMeeting} onSelect={selectMeeting} onDelete={id => CONF(id)} selectedAgenda={selectedMeeting && agendaDraftForMeetingId === selectedMeeting.id ? meetingAgendaDraft : (selectedMeeting?.agenda || [])} onChangeSelectedAgenda={(items,id) => { MADI(id); MAD(items); }} onSaveAgenda={() => void saveMeetingAgenda()} onSaveNotes={saveMeetingNotes} form={mf} onFormChange={(key,value) => MF(current => ({...current,[key]:value}))} agenda={agendaItems} onNewAgendaChange={AITEMS} onCreate={() => void addMeeting()} busy={busy} onDashboard={() => P('Overview')} />}
-          {page === 'Chat' && <ResearchChat workspaceTitle={w.title} memberCount={members.length} refresh={() => void refreshChat()} search={chatSearch} onSearch={CSEARCH} filter={chatFilter} onFilter={CFILTER} messages={chatMessages} visible={visibleChatMessages} userId={user.userId} topics={CHAT_TOPICS} topic={chatTopic} onTopic={CTopic} draft={chatDraft} onDraft={CD} busy={busy} send={() => void sendChat()} notifications={notifications} unread={unreadNotificationCount} openNotice={openNotification} markRead={() => void markAllNotificationsRead()} enableDesktop={() => void requestBrowserNotifications()} />}
+          {page === 'Meetings' && <ResearchMeetings canManage={isOwner} meetings={meetings} expanded={meetingsExpanded} onToggleExpanded={() => MEETINGS_EXPANDED(v => !v)} selected={selectedMeeting} onSelect={selectMeeting} onDelete={id => CONF(id)} selectedAgenda={selectedMeeting && agendaDraftForMeetingId === selectedMeeting.id ? meetingAgendaDraft : (selectedMeeting?.agenda || [])} onChangeSelectedAgenda={(items,id) => { MADI(id); MAD(items); }} onSaveAgenda={() => void saveMeetingAgenda()} onSaveNotes={saveMeetingNotes} form={mf} onFormChange={(key,value) => MF(current => ({...current,[key]:value}))} agenda={agendaItems} onNewAgendaChange={AITEMS} onCreate={() => void addMeeting()} busy={busy} onDashboard={() => P('Overview')} />}
+          {page === 'Chat' && <ResearchChat workspaceTitle={w.title} memberCount={members.length} refresh={() => void refreshChat()} search={chatSearch} onSearch={CSEARCH} filter={chatFilter} onFilter={CFILTER} messages={chatMessages} visible={visibleChatMessages} userId={user.userId} topics={CHAT_TOPICS} topic={chatTopic} onTopic={CTopic} draft={chatDraft} onDraft={CD} busy={busy} send={() => void sendChat()} members={members} onlineUserIds={onlineUserIds} />}
           {page === 'Team' && (
             <>
               <div className="heading">
@@ -1857,15 +1855,16 @@ function App() {
                 <h3>Members · {members.length}</h3>
                 {members.map((m, i) => (
                   <div className="member" key={m.id}>
-                    <span className="avatar">
-                      {(m.name || '?').slice(0, 1).toUpperCase()}
+                    <span className="member-avatar">
+                      {m.avatarUrl ? <img src={m.avatarUrl} alt={m.name + ' profile'} referrerPolicy="no-referrer" /> : (m.name || '?').slice(0, 1).toUpperCase()}
+                      <i className={'presence-dot ' + (onlineUserIds.includes(m.userId) ? 'online' : 'offline')} />
                     </span>
-                    <span>
-                      <b>{m.name}</b>
+                    <span className="member-identity">
+                      <b>{m.name || 'Researcher'} {m.userId === user.userId && <small>(You)</small>}</b>
                       <small>{m.email || 'Signed-in member'}</small>
                     </span>
-                    <em>{m.role}</em>
-                    {m.userId === user.userId && <small>You</small>}
+                    <em className={'role-pill ' + (m.role === 'owner' ? 'owner' : 'member')}>{m.role === 'owner' ? 'Owner / Leader' : 'Member'}</em>
+                    <em className={'presence-status ' + (onlineUserIds.includes(m.userId) ? 'online' : 'offline')}>{onlineUserIds.includes(m.userId) ? 'Online' : 'Offline'}</em>
                     {isOwner && m.userId !== user.userId && <button className="secondary transfer-owner-button" onClick={() => TRANSFER(m)}><ArrowLeftRight size={13} /> Transfer ownership</button>}
                   </div>
                 ))}
