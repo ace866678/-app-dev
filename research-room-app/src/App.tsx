@@ -332,6 +332,49 @@ const getAuthRedirectUrl = () => {
   }
   return window.location.origin;
 };
+function FluidWaveBackdrop() {
+  const waveOneA = 'M0 255 C180 198 310 314 490 258 C660 205 820 286 990 246 C1170 206 1360 299 1600 234 L1600 438 C1360 498 1170 398 990 449 C820 500 660 424 490 465 C310 506 180 399 0 458 Z';
+  const waveOneB = 'M0 300 C180 346 310 200 490 278 C660 355 820 220 990 278 C1170 337 1360 205 1600 285 L1600 490 C1360 418 1170 535 990 480 C820 425 660 535 490 493 C310 451 180 538 0 505 Z';
+  const waveOneC = 'M0 230 C180 176 310 326 490 245 C660 170 820 326 990 236 C1170 153 1360 326 1600 220 L1600 430 C1360 515 1170 375 990 455 C820 535 660 405 490 465 C310 525 180 380 0 450 Z';
+  const waveTwoA = 'M0 420 C180 365 320 470 500 424 C680 378 830 488 1010 438 C1190 388 1370 485 1600 420 L1600 640 C1370 700 1190 605 1010 657 C830 709 680 595 500 643 C320 691 180 585 0 645 Z';
+  const waveTwoB = 'M0 455 C180 500 320 365 500 450 C680 535 830 390 1010 465 C1190 540 1370 385 1600 470 L1600 690 C1370 600 1190 745 1010 680 C830 615 680 750 500 690 C320 630 180 735 0 690 Z';
+  const waveTwoC = 'M0 390 C180 345 320 500 500 410 C680 320 830 515 1010 425 C1190 335 1370 530 1600 405 L1600 625 C1370 735 1190 570 1010 650 C830 730 680 565 500 655 C320 745 180 560 0 630 Z';
+  const waveThreeA = 'M0 590 C180 535 330 645 510 590 C690 535 840 650 1020 600 C1200 550 1390 655 1600 585 L1600 810 C1390 875 1200 765 1020 820 C840 875 690 760 510 815 C330 870 180 755 0 820 Z';
+  const waveThreeB = 'M0 625 C180 675 330 535 510 620 C690 705 840 555 1020 630 C1200 705 1390 550 1600 635 L1600 850 C1390 780 1200 900 1020 850 C840 800 690 905 510 850 C330 795 180 900 0 850 Z';
+  return (
+    <div className="fluid-wave-backdrop" aria-hidden="true">
+      <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <linearGradient id="research-wave-lilac" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#b7aaff" />
+            <stop offset="48%" stopColor="#aaa8f4" />
+            <stop offset="100%" stopColor="#d0c4ff" />
+          </linearGradient>
+          <linearGradient id="research-wave-mint" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#b2eee2" />
+            <stop offset="52%" stopColor="#a8dfe9" />
+            <stop offset="100%" stopColor="#c2e9f1" />
+          </linearGradient>
+          <linearGradient id="research-wave-pink" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#ffd2e1" />
+            <stop offset="55%" stopColor="#f3c7f2" />
+            <stop offset="100%" stopColor="#ffdfd6" />
+          </linearGradient>
+        </defs>
+        <path className="fluid-wave-lilac" d={waveOneA} fill="url(#research-wave-lilac)" fillOpacity=".38">
+          <animate attributeName="d" dur="18s" repeatCount="indefinite" values={waveOneA + ';' + waveOneB + ';' + waveOneC + ';' + waveOneA} />
+        </path>
+        <path className="fluid-wave-mint" d={waveTwoA} fill="url(#research-wave-mint)" fillOpacity=".34">
+          <animate attributeName="d" dur="23s" repeatCount="indefinite" values={waveTwoA + ';' + waveTwoB + ';' + waveTwoC + ';' + waveTwoA} />
+        </path>
+        <path className="fluid-wave-pink" d={waveThreeA} fill="url(#research-wave-pink)" fillOpacity=".28">
+          <animate attributeName="d" dur="20s" repeatCount="indefinite" values={waveThreeA + ';' + waveThreeB + ';' + waveThreeA} />
+        </path>
+      </svg>
+    </div>
+  );
+}
+
 function App() {
   useEffect(() => {
     const root = document.documentElement;
@@ -1235,6 +1278,7 @@ function App() {
   if (!user)
     return (
       <main className="auth">
+        <FluidWaveBackdrop />
         <section className="auth-left">
           <div className="brand">
             <span className="mark">
@@ -1314,6 +1358,7 @@ function App() {
   if (!w)
     return (
       <main className="welcome">
+        <FluidWaveBackdrop />
         <header>
           <div className="brand">
             <span className="mark">
@@ -1431,6 +1476,7 @@ function App() {
   />;
   return (
     <div className="shell">
+      <FluidWaveBackdrop />
       <aside className={'sidebar ' + (mobile ? 'shown' : '')}>
         <div className="brand">
           <span className="mark">
@@ -1952,261 +1998,3 @@ function App() {
                       <p className="muted">
                         {t.assigneeName || 'Unassigned'} · {date(t.dueDate)}
                       </p>
-                      {isOwner && <label className="task-deadline-edit">
-                        Deadline
-                        <input type="date" value={t.dueDate || ''} onChange={e => changeTask(t, { dueDate: e.target.value })} />
-                      </label>}
-                      <div className="two">
-                        <label>
-                          Status
-                          <select
-                            value={t.status}
-                            onChange={e =>
-                              changeTask(t, { status: e.target.value })
-                            }
-                          >
-                            {['To do', 'In progress', 'Done'].map(x => (
-                              <option key={x}>{x}</option>
-                            ))}
-                          </select>
-                        </label>
-                        {isOwner ? <label>
-                          Assignee
-                          <select
-                            value={t.assigneeId || ''}
-                            onChange={e => {
-                              const m = members.find(m => m.userId === e.target.value);
-                              changeTask(t, { assigneeId: e.target.value, assigneeName: m?.name || '' });
-                            }}
-                          >
-                            <option value="">Unassigned</option>
-                            {members.map(m => <option key={m.userId} value={m.userId}>{m.name}</option>)}
-                          </select>
-                        </label> : <div className="task-assignee-readonly">
-                          <small>Assigned to</small>
-                          <b>{t.assigneeName || 'Unassigned'}</b>
-                        </div>}
-                      </div>
-                    </article>
-                  ))}
-                  {!tasks.length && (
-                    <p className="muted">
-                      Your task list is clear. Add a task to start.
-                    </p>
-                  )}
-                </section>
-              </div>
-            </>
-          )}
-          {page === 'Meetings' && <ResearchMeetings canManage={isOwner} meetings={meetings} expanded={meetingsExpanded} onToggleExpanded={() => MEETINGS_EXPANDED(v => !v)} selected={selectedMeeting} onSelect={selectMeeting} onDelete={id => CONF(id)} selectedAgenda={selectedMeeting && agendaDraftForMeetingId === selectedMeeting.id ? meetingAgendaDraft : (selectedMeeting?.agenda || [])} onChangeSelectedAgenda={(items,id) => { MADI(id); MAD(items); }} onSaveAgenda={() => void saveMeetingAgenda()} onSaveNotes={saveMeetingNotes} form={mf} onFormChange={(key,value) => MF(current => ({...current,[key]:value}))} agenda={agendaItems} onNewAgendaChange={AITEMS} onCreate={() => void addMeeting()} busy={busy} onDashboard={() => P('Overview')} />}
-          {page === 'Chat' && <ResearchChat workspaceTitle={w.title} memberCount={members.length} refresh={() => void refreshChat()} search={chatSearch} onSearch={CSEARCH} filter={chatFilter} onFilter={CFILTER} messages={chatMessages} visible={visibleChatMessages} userId={user.userId} topics={chatTopics} chapterTopics={chapterOptions} onOpenChapter={openChapterDocument} topic={chatTopic} onTopic={CTopic} draft={chatDraft} onDraft={CD} busy={busy} send={ids => void sendChat(ids)} members={members} onlineUserIds={onlineUserIds} onCreateTopic={createOrOpenChatTopic} onNavigate={target => P(target)} /> }
-          {page === 'Team' && (
-            <>
-              <div className="heading">
-                <div>
-                  <small>COLLABORATION</small>
-                  <h1>Your research team</h1>
-                  <p>
-                    Invite groupmates using the code. Each person signs in with
-                    their own account.
-                  </p>
-                </div>
-                <button className="primary" onClick={copy}>
-                  <Copy size={15} /> Copy join code
-                </button>
-              </div>
-              <section className="panel invite-panel">
-                <small>WORKSPACE JOIN CODE</small>
-                <strong>{w.joinCode}</strong>
-                <p>Share this code privately with your groupmates.</p>
-                <button className="secondary" onClick={copy}>
-                  <Copy size={15} /> Copy code
-                </button>
-              </section>
-              <section className="panel">
-                <h3>Members · {members.length}</h3>
-                {members.map((m, i) => (
-                  <div className="member" key={m.id}>
-                    <span className="member-avatar">
-                      <AvatarArt value={m.avatarUrl} name={m.name} />
-                      <i className={'presence-dot ' + (onlineUserIds.includes(m.userId) ? 'online' : 'offline')} />
-                    </span>
-                    <span className="member-identity">
-                      <b>{m.name || 'Researcher'} {m.userId === user.userId && <small>(You)</small>}</b>
-                      <small>{m.email || 'Signed-in member'}</small>
-                    </span>
-                    <em className={'role-pill ' + (m.role === 'owner' ? 'owner' : 'member')}>{m.role === 'owner' ? 'Owner / Leader' : 'Member'}</em>
-                    <em className={'presence-status ' + (onlineUserIds.includes(m.userId) ? 'online' : 'offline')}>{onlineUserIds.includes(m.userId) ? 'Online' : 'Offline'}</em>
-                    {isOwner && m.userId !== user.userId && <button className="secondary transfer-owner-button" onClick={() => TRANSFER(m)}><ArrowLeftRight size={13} /> Transfer ownership</button>}
-                  </div>
-                ))}
-              </section>
-            </>
-          )}
-          {page === 'Settings' && (
-            <>
-              <div className="heading">
-                <div>
-                  <small>WORKSPACE DETAILS</small>
-                  <h1>Research settings</h1>
-                  <p>Keep your institution and thesis title consistent.</p>
-                </div>
-              </div>
-              <section className="panel profile-editor">
-                <div className="profile-editor-heading"><div><h3>Your profile</h3><p>Choose a display name and one of ten original geometric icon avatars. Your choice appears beside chat messages and across your team.</p></div><span className="profile-editor-preview"><AvatarArt value={profileAvatar} name={profileName || user.name || 'Researcher'} /></span></div>
-                <form onSubmit={saveProfile}>
-                  <label>Display name<input required maxLength={80} value={profileName} onChange={event => PROFILE_NAME(event.target.value)} placeholder="Your name" /></label>
-                  <div className="profile-avatar-prompt"><strong>Choose an icon avatar</strong><small>Simple original shapes, saved to your profile</small></div>
-                  <div className="avatar-choice-grid" role="group" aria-label="Choose one of ten profile icon avatars">
-                    {AVATAR_OPTIONS.map(avatar => {
-                      const value = 'shape-avatar:' + avatar.id;
-                      return <button type="button" key={avatar.id} className={'avatar-choice' + (profileAvatar === value ? ' selected' : '')} aria-pressed={profileAvatar === value} onClick={() => PROFILE_AVATAR(value)}>
-                        <AvatarArt value={value} name={avatar.name} />
-                        <span>{avatar.name}</span>
-                      </button>;
-                    })}
-                  </div>
-                  <button className="primary" type="submit" disabled={busy}><Save size={15} /> Save profile</button>
-                </form>
-              </section>
-              <section className="panel settings">
-                <h3>Institution & thesis details</h3>
-                <form onSubmit={saveSettings}>
-                  <label>
-                    Workspace name
-                    <input
-                      required
-                      value={w.title}
-                      onChange={e => W({ ...w, title: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    Research title
-                    <input
-                      value={w.researchTitle || ''}
-                      onChange={e => W({ ...w, researchTitle: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    School / institution
-                    <input
-                      value={w.institution || ''}
-                      onChange={e => W({ ...w, institution: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    Degree program
-                    <input
-                      value={w.program || ''}
-                      onChange={e => W({ ...w, program: e.target.value })}
-                    />
-                  </label>
-                  <button className="primary" disabled={busy}>
-                    <Save size={15} /> Save settings
-                  </button>
-                </form>
-                <p className="tip">
-                  The supplied template is a writing structure. Verify page
-                  layout, signatures, CVs, and citation style against your
-                  institution’s latest official requirements.
-                </p>
-              </section>
-              <WorkspaceManagement isOwner={isOwner} busy={busy} onLeave={() => void leaveWorkspace()} onDelete={() => void deleteWorkspace()} />
-            </>
-          )}
-        </div>
-      </main>
-      {modal === 'chapter' && (
-        <div className="shade">
-          <form className="modal" onSubmit={event => { event.preventDefault(); void createChapter(); }}>
-            <button type="button" className="close" onClick={() => MOD('')}><X size={18} /></button>
-            <h2>Add a chapter</h2>
-            <p>Chapter names are shared with Document and Chat. You can add sections to the new chapter next.</p>
-            <label>Chapter name<input required maxLength={100} autoFocus value={chapterDraft} onChange={event => CHAPTER_DRAFT(event.target.value)} placeholder="e.g. Chapter 3" /></label>
-            {err && <p className="error">{err}</p>}
-            <div className="actions"><button type="button" className="secondary" onClick={() => MOD('')}>Cancel</button><button className="primary" type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create chapter'}</button></div>
-          </form>
-        </div>
-      )}
-      {(modal === 'create' || modal === 'join') && (
-        <div className="shade">
-          <form className="modal" onSubmit={e => { e.preventDefault(); modal === 'create' ? create() : join(); }}>
-            <button type="button" className="close" onClick={() => MOD('')}><X size={18} /></button>
-            <h2>{modal === 'create' ? 'Create another workspace' : 'Join a workspace'}</h2>
-            {modal === 'create' ? <>
-              {[
-                ['Workspace name', 'title'],
-                ['Thesis title', 'researchTitle'],
-                ['School / institution', 'institution'],
-                ['Degree program', 'program'],
-              ].map(([label, key]) => (
-                <label key={key}>
-                  {label}
-                  <input required={key === 'title'} value={(wf as any)[key]} onChange={e => WF({ ...wf, [key]: e.target.value })} />
-                </label>
-              ))}
-            </> : <label>Workspace join code
-              <input required value={code} onChange={e => CODE(e.target.value.toUpperCase())} maxLength={12} placeholder="Ask the owner for the code" />
-            </label>}
-            <div className="actions">
-              <button type="button" className="secondary" onClick={() => MOD('')}>Cancel</button>
-              <button className="primary" type="submit" disabled={busy}>{busy ? 'Please wait…' : modal === 'create' ? 'Create workspace' : 'Join workspace'}</button>
-            </div>
-            {err && <p className="error">{err}</p>}
-          </form>
-        </div>
-      )}
-      {transferTarget && (
-        <div className="shade">
-          <div className="modal">
-            <h2>Transfer workspace ownership?</h2>
-            <p>You are about to make <strong>{transferTarget.name}</strong> the owner of <strong>{w.title}</strong>. They will control task creation and deadlines. Your account will remain a member. You will no longer have owner controls after this transfer.</p>
-            <div className="actions">
-              <button className="secondary" onClick={() => TRANSFER(null)}>Cancel</button>
-              <button className="primary" disabled={busy} onClick={() => void transferOwnership(transferTarget.userId)}>Confirm transfer</button>
-            </div>
-          </div>
-        </div>
-      )}
-      {confirm && (
-        <div className="shade">
-          <div className="modal">
-            <h2>Delete this item?</h2>
-            <p>This cannot be undone.</p>
-            <div className="actions">
-              <button className="secondary" onClick={() => CONF('')}>
-                Cancel
-              </button>
-              <button
-                className="primary red"
-                onClick={() =>
-                  run(async () => {
-                    if (page === 'Document') {
-                      await call('delete', '/api/sections/' + confirm);
-                      S(a => a.filter(s => s.id !== confirm));
-                      if (sid === confirm) {
-                        SID('');
-                        ST('');
-                        SC('');
-                      }
-                    } else if (page === 'Tasks') {
-                      await call('delete', '/api/tasks/' + confirm);
-                      T(a => a.filter(t => t.id !== confirm));
-                    } else {
-                      await call('delete', '/api/meetings/' + confirm);
-                      MT(a => a.filter(m => m.id !== confirm));
-                    }
-                    CONF('');
-                  }, 'Item deleted.')
-                }
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-export default App;
