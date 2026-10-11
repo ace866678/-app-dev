@@ -333,6 +333,22 @@ const getAuthRedirectUrl = () => {
   return window.location.origin;
 };
 function App() {
+  useEffect(() => {
+    const root = document.documentElement;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (reducedMotion.matches) return;
+    const updateAmbientPointer = (event: PointerEvent) => {
+      if (event.pointerType === 'touch') return;
+      root.style.setProperty('--ambient-x', event.clientX + 'px');
+      root.style.setProperty('--ambient-y', event.clientY + 'px');
+    };
+    window.addEventListener('pointermove', updateAmbientPointer, { passive: true });
+    return () => {
+      window.removeEventListener('pointermove', updateAmbientPointer);
+      root.style.removeProperty('--ambient-x');
+      root.style.removeProperty('--ambient-y');
+    };
+  }, []);
   const [user, U] = useState<any>(null),
     [spaces, SP] = useState<W[]>([]),
     [w, W] = useState<W | null>(null),
