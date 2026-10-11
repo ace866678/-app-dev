@@ -332,42 +332,6 @@ const getAuthRedirectUrl = () => {
   }
   return window.location.origin;
 };
-function FluidWaveBackdrop() {
-  const waveOneA = 'M0 255 C180 198 310 314 490 258 C660 205 820 286 990 246 C1170 206 1360 299 1600 234 L1600 438 C1360 498 1170 398 990 449 C820 500 660 424 490 465 C310 506 180 399 0 458 Z';
-
-
-  const waveTwoA = 'M0 420 C180 365 320 470 500 424 C680 378 830 488 1010 438 C1190 388 1370 485 1600 420 L1600 640 C1370 700 1190 605 1010 657 C830 709 680 595 500 643 C320 691 180 585 0 645 Z';
-
-
-  const waveThreeA = 'M0 590 C180 535 330 645 510 590 C690 535 840 650 1020 600 C1200 550 1390 655 1600 585 L1600 810 C1390 875 1200 765 1020 820 C840 875 690 760 510 815 C330 870 180 755 0 820 Z';
-
-  return (
-    <div className="fluid-wave-backdrop" aria-hidden="true">
-      <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
-        <defs>
-          <linearGradient id="research-wave-lilac" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#b7aaff" />
-            <stop offset="48%" stopColor="#aaa8f4" />
-            <stop offset="100%" stopColor="#d0c4ff" />
-          </linearGradient>
-          <linearGradient id="research-wave-mint" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#b2eee2" />
-            <stop offset="52%" stopColor="#a8dfe9" />
-            <stop offset="100%" stopColor="#c2e9f1" />
-          </linearGradient>
-          <linearGradient id="research-wave-pink" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#ffd2e1" />
-            <stop offset="55%" stopColor="#f3c7f2" />
-            <stop offset="100%" stopColor="#ffdfd6" />
-          </linearGradient>
-        </defs>
-        <path className="fluid-wave-lilac" d={waveOneA} fill="url(#research-wave-lilac)" fillOpacity=".38" />
-        <path className="fluid-wave-mint" d={waveTwoA} fill="url(#research-wave-mint)" fillOpacity=".34" />
-        <path className="fluid-wave-pink" d={waveThreeA} fill="url(#research-wave-pink)" fillOpacity=".28" />
-      </svg>
-    </div>
-  );
-}
 
 function App() {
   useEffect(() => {
@@ -1272,7 +1236,7 @@ function App() {
   if (!user)
     return (
       <main className="auth">
-        <FluidWaveBackdrop />
+
         <section className="auth-left">
           <div className="brand">
             <span className="mark">
@@ -1352,7 +1316,7 @@ function App() {
   if (!w)
     return (
       <main className="welcome">
-        <FluidWaveBackdrop />
+
         <header>
           <div className="brand">
             <span className="mark">
@@ -1470,7 +1434,6 @@ function App() {
   />;
   return (
     <div className="shell">
-      <FluidWaveBackdrop />
       <aside className={'sidebar ' + (mobile ? 'shown' : '')}>
         <div className="brand">
           <span className="mark">
@@ -1998,3 +1961,40 @@ function App() {
                       </label>}
                       <div className="two">
                         <label>
+                          Status
+                          <select
+                            value={t.status}
+                            onChange={e =>
+                              changeTask(t, { status: e.target.value })
+                            }
+                          >
+                            {['To do', 'In progress', 'Done'].map(x => (
+                              <option key={x}>{x}</option>
+                            ))}
+                          </select>
+                        </label>
+                        {isOwner ? <label>
+                          Assignee
+                          <select
+                            value={t.assigneeId || ''}
+                            onChange={e => {
+                              const m = members.find(m => m.userId === e.target.value);
+                              changeTask(t, { assigneeId: e.target.value, assigneeName: m?.name || '' });
+                            }}
+                          >
+                            <option value="">Unassigned</option>
+                            {members.map(m => <option key={m.userId} value={m.userId}>{m.name}</option>)}
+                          </select>
+                        </label> : <div className="task-assignee-readonly">
+                          <small>Assigned to</small>
+                          <b>{t.assigneeName || 'Unassigned'}</b>
+                        </div>}
+                      </div>
+                    </article>
+                  ))}
+                  {!tasks.length && (
+                    <p className="muted">
+                      Your task list is clear. Add a task to start.
+                    </p>
+                  )}
+                </section>
