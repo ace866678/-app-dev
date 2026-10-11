@@ -43,7 +43,10 @@
       "drag-and-drop section ordering",
       "chapter-specific DOCX export",
       "chapter grouping",
-      "sample DOCX template import"
+      "sample DOCX template import",
+      "section creator attribution",
+      "last editor and modification timestamp",
+      "custom section creation"
     ],
     "description": "Verifies editing a proposal section persists after navigating away and returning.",
     "steps": [
@@ -55,9 +58,11 @@
       "Export the document as a DOCX file",
       "Assign sections to Chapter 1 and Chapter 2",
       "Select Chapter 1 and export the document",
-      "Upload a sample DOCX and review detected headings before importing"
+      "Upload a sample DOCX and review detected headings before importing",
+      "Open a section and review its creator, last editor, and modification time",
+      "Create a custom section, save it, and verify creator attribution is shown"
     ],
-    "expected": "The export contains only the selected chapter's sections, and the sample DOCX import previews detected headings and assigns them to chapters before adding sections."
+    "expected": "The export contains only the selected chapter's sections, and the sample DOCX import previews detected headings and assigns them to chapters before adding sections. Each section shows its recorded creator and last editor; new sections can be added and saved with attribution."
   },
   {
     "name": "Create and update tasks with validation",
@@ -68,9 +73,10 @@
       "due dates",
       "required field validation",
       "dashboard upcoming deadlines",
-      "searchable location map",
       "owner-only task creation",
-      "owner-only deadline changes"
+      "owner-only deadline changes",
+      "live team presence on dashboard",
+      "online and offline member status"
     ],
     "description": "Verifies owners can create tasks and assign deadlines while members can view tasks and update status without creating tasks or deadlines.",
     "steps": [
@@ -78,7 +84,8 @@
       "Actor B signs in as a member and verifies the task and deadline are visible",
       "Actor B checks that task creation is owner-only",
       "Actor A marks the task In progress and checks the dashboard deadline list",
-      "Refresh and reopen Tasks"
+      "Refresh and reopen Tasks",
+      "Check the dashboard Team presence panel and verify each team member has an online or offline label."
     ],
     "expected": "Only the owner can create tasks or set/change deadlines. Members can see the shared task and update status; task deadlines persist after refresh."
   },
@@ -92,7 +99,10 @@
       "cross-member updates",
       "message persistence",
       "research discussion topics",
-      "message filtering and search"
+      "message filtering and search",
+      "profile photos beside chat messages",
+      "full emoji search picker",
+      "live online indicators"
     ],
     "description": "Verifies workspace members can send messages and see each other's saved messages.",
     "steps": [
@@ -104,9 +114,12 @@
       "Filter by Literature Review and search for a keyword",
       "Verify the chat rail lists research topics only",
       "Switch topics and confirm the selected topic is prominent in the chat header",
-      "Confirm notifications remain in the global notification center, not the chat rail"
+      "Confirm notifications remain in the global notification center, not the chat rail",
+      "Verify messages show a circular profile photo or initials beside the sender",
+      "Open the emoji picker, search for an emoji, and insert it into a message",
+      "Verify presence indicators appear beside online members"
     ],
-    "expected": "Messages retain their topic, members can filter/search research discussions, and messages persist across refresh. Chat rail contains topics only; selected topic is prominent and notifications remain global."
+    "expected": "Messages retain their topic, members can filter/search research discussions, and messages persist across refresh. Chat rail contains topics only; selected topic is prominent and notifications remain global. Message rows show member avatars, and the emoji picker supports the full searchable emoji catalogue."
   },
   {
     "name": "Join a workspace and read shared research content",
@@ -117,10 +130,12 @@
       "authorization",
       "cross-member document visibility",
       "joining member sees shared sections and meetings",
-      "custom meeting agenda create and edit",
       "realtime notifications for other members",
       "right-side topic list",
-      "emoji insertion"
+      "emoji insertion",
+      "owner-only meeting creation",
+      "members view meetings in read-only mode",
+      "workspace presence"
     ],
     "description": "Verifies a second member can join by code and access the workspace's shared proposal sections.",
     "steps": [
@@ -128,13 +143,13 @@
       "Actor B signs in and joins using Actor A's code",
       "Actor B opens the document workspace",
       "Join an existing workspace from a second account and open Document",
-      "Create a meeting with a custom agenda and update one agenda point",
+      "Actor A (owner / leader) creates a meeting with a custom agenda; Actor B verifies they can view but not edit or create meetings",
       "Send a chat message and confirm the other member receives a notification",
       "Choose a topic from the right-hand list and insert an emoji",
       "As a non-owner, leave a workspace and verify it disappears from the workspace selector",
       "As the owner, confirm workspace deletion and verify associated content is removed",
       "After leaving the last workspace, verify create/join forms are available"
     ],
-    "expected": "Joining members see the same workspace content; custom agendas persist; other members receive notifications; chat topics are visible on the right and emojis can be inserted. Non-owners can leave, only owners can delete, and an empty-workspace page supports creating or joining another workspace."
+    "expected": "Joining members see the same workspace content; only the owner / leader can schedule, edit agendas or notes, or delete meetings; custom agendas persist; other members receive notifications; chat topics are visible on the right and the full emoji picker is available. Non-owners can leave, only owners can delete workspaces, and an empty-workspace page supports creating or joining another workspace."
   }
 ]
