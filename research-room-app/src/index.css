@@ -1453,6 +1453,160 @@ small {
 .chapter-filter label { gap:6px; }
 .section-chapter-badge { margin-left:6px; color:#7c74cc; font-size:8px; font-weight:400; }
 .transfer-owner-button { padding:6px 8px; font-size:9px; white-space:nowrap; }
+ 
+/* Animated, pointer-responsive dark aurora backdrop */
+:root {
+  --ambient-x: 52vw;
+  --ambient-y: 36vh;
+  background: #070a14;
+}
+html, body {
+  background: #070a14;
+}
+body {
+  position: relative;
+  overflow-x: hidden;
+  isolation: isolate;
+}
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+body::before {
+  background:
+    radial-gradient(620px circle at var(--ambient-x) var(--ambient-y), rgba(101, 88, 217, .24), transparent 66%),
+    radial-gradient(900px ellipse at 14% 10%, rgba(30, 160, 184, .12), transparent 62%),
+    radial-gradient(850px ellipse at 84% 88%, rgba(108, 52, 188, .15), transparent 61%);
+  transform: translate3d(0, 0, 0);
+  animation: research-aurora-float 28s ease-in-out infinite alternate;
+  will-change: transform, background-position;
+}
+body::after {
+  opacity: .23;
+  background-image:
+    radial-gradient(circle, rgba(194, 199, 255, .52) .8px, transparent 1.2px),
+    linear-gradient(rgba(173, 182, 230, .045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(173, 182, 230, .045) 1px, transparent 1px);
+  background-size: 37px 37px, 74px 74px, 74px 74px;
+  background-position: 0 0, 0 0, 0 0;
+  mask-image: linear-gradient(to bottom, black 0%, rgba(0, 0, 0, .55) 65%, transparent 100%);
+  animation: research-grid-drift 70s linear infinite;
+}
+#root {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  background: transparent;
+}
+@keyframes research-aurora-float {
+  0% { transform: translate3d(-.6%, -.3%, 0) scale(1); }
+  50% { transform: translate3d(.5%, .4%, 0) scale(1.035); }
+  100% { transform: translate3d(-.3%, .7%, 0) scale(1.015); }
+}
+@keyframes research-grid-drift {
+  from { background-position: 0 0, 0 0, 0 0; }
+  to { background-position: 74px 37px, 74px 74px, 74px 74px; }
+}
+
+/* Light surfaces stay crisp above the dark ambient canvas */
+.auth {
+  background: transparent;
+}
+.auth-left {
+  background: linear-gradient(145deg, rgba(13, 17, 38, .94), rgba(31, 25, 62, .86));
+  position: relative;
+}
+.auth-right {
+  background: transparent;
+}
+.auth-box {
+  padding: 28px;
+  border: 1px solid rgba(194, 190, 255, .18);
+  border-radius: 22px;
+  background: rgba(13, 16, 34, .82);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .22);
+  backdrop-filter: blur(24px);
+}
+.auth-box h2 {
+  color: #f1f2ff;
+}
+.auth-box p {
+  color: #b8c1dc;
+}
+.auth-form label {
+  color: #c1c6dc;
+}
+.auth-box > small {
+  color: #a2abc7;
+}
+.welcome {
+  background: transparent;
+  color: #eef1ff;
+}
+.welcome-inner h1 {
+  color: #f3f4ff;
+}
+.welcome-inner > p {
+  color: #b9c2dc;
+}
+.welcome-inner > small {
+  color: #b7adff;
+}
+.heading h1 {
+  color: #f4f5ff;
+}
+.heading p {
+  color: #b9c2dc;
+}
+.heading small {
+  color: #b7adff;
+}
+.workspace-empty-shell {
+  background: transparent;
+  color: #eef1ff;
+}
+.workspace-empty-brand {
+  background: linear-gradient(155deg, rgba(12, 17, 38, .96), rgba(33, 27, 65, .92));
+}
+.workspace-empty-brand h1 {
+  color: #f3f4ff;
+}
+.workspace-empty-brand p {
+  color: #bbc3dc;
+}
+.workspace-empty-title h2 {
+  color: #f4f5ff;
+}
+.workspace-empty-title p {
+  color: #b9c2dc;
+}
+
+/* Accessibility and small-screen performance */
+@media (max-width: 700px) {
+  body::before {
+    background:
+      radial-gradient(440px circle at var(--ambient-x) var(--ambient-y), rgba(101, 88, 217, .18), transparent 68%),
+      radial-gradient(600px ellipse at 14% 10%, rgba(30, 160, 184, .08), transparent 62%),
+      radial-gradient(650px ellipse at 84% 88%, rgba(108, 52, 188, .1), transparent 61%);
+  }
+  body::after {
+    opacity: .16;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body::before,
+  body::after {
+    animation: none !important;
+  }
+  body::before {
+    transform: none !important;
+  }
+}
+
 @media (max-width:1000px) { .dashboard-meeting-layout, .meetings-workspace { grid-template-columns:1fr; } .meeting-schedule-list { max-height:210px; } }
 @media (max-width:760px) {
   .dashboard-meeting-layout { gap:12px; }
