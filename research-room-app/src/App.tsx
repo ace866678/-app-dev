@@ -6,6 +6,7 @@ import ResearchMeetings from './ResearchMeetings';
 import ResearchNotifications from './ResearchNotifications';
 import WorkspaceManagement from './WorkspaceManagement';
 import WorkspaceEmptyState from './WorkspaceEmptyState';
+import { AvatarArt, AVATAR_OPTIONS } from './ProfileAvatar';
 import {
   BookOpen,
   LayoutDashboard,
@@ -33,6 +34,7 @@ import {
   ChevronLeft,
   FileUp,
   ArrowLeftRight,
+  Layers3,
 } from 'lucide-react';
 type W = {
   id: string;
@@ -346,6 +348,8 @@ function App() {
   const [chatTopic, CTopic] = useState('General');
   const [chatFilter, CFILTER] = useState('All topics');
   const [chatSearch, CSEARCH] = useState('');
+  const [profileName, PROFILE_NAME] = useState('');
+  const [profileAvatar, PROFILE_AVATAR] = useState('shape-avatar:orbit');
   const [draggedSectionId, DSI] = useState('');
   const [agendaItems, AITEMS] = useState<string[]>(defaultAgenda);
   const [meetingAgendaDraft, MAD] = useState<string[]>([]);
@@ -396,6 +400,11 @@ function App() {
     [search, SEARCH] = useState(''),
     [confirm, CONF] = useState('');
   const isOwner = members.some(member => member.userId === user?.userId && member.role === 'owner');
+  useEffect(() => {
+    if (!user) return;
+    PROFILE_NAME(user.name || user.email || 'Researcher');
+    PROFILE_AVATAR(user.avatarUrl || 'shape-avatar:orbit');
+  }, [user?.userId]);
   const visibleChatMessages = chatMessages.filter(message =>
     (chatFilter === 'All topics' || (message.topic || 'General') === chatFilter) &&
     message.text.toLowerCase().includes(chatSearch.toLowerCase().trim())
@@ -639,6 +648,17 @@ function App() {
 
     throw new Error('Unsupported research data request: ' + method.toUpperCase() + ' ' + url);
   };
+  const syncChatTopicsToChapters = async (workspaceId: string, messages: ChatMessage[], chapterRows: Ch[], sectionRows: S[]) => {
+    const known = new Set(['Chapter 1', ...chapterRows.map(chapter => chapter.title), ...sectionRows.map(section => section.chapter || 'Chapter 1')].map(topic => String(topic || '').trim().toLowerCase()));
+    const candidates = messages.map(message => String(message.topic || 'General').trim()).filter(Boolean);
+    const missing = candidates.filter((topic, index, all) => !known.has(topic.toLowerCase()) && all.findIndex(other => other.toLowerCase() === topic.toLowerCase()) === index);
+    if (!missing.length) return chapterRows;
+    for (const [index, topic] of missing.entries()) {
+      await call('post', '/api/chapters', { workspaceId, title: topic.slice(0, 100), chapterOrder: chapterRows.length + index });
+    }
+    const latest = await call('get', '/api/workspaces/' + workspaceId);
+    return latest.chapters || chapterRows;
+  };
   const reloadSpaces = async () => {
     const d = await call('get', '/api/workspaces');
     const availableSpaces = d.workspaces || [];
@@ -666,7 +686,15 @@ function App() {
     await load(selected);
   };
   const load = async (x: W) => {
-    const d = await call('get', '/api/workspaces/' + x.id);
+    let d = await call('get', '/api/workspaces/' + x.id);
+    let savedMessages: ChatMessage[] = [];
+    try {
+      const messagesData = await call('get', '/api/workspaces/' + x.id + '/messages');
+      savedMessages = messagesData.messages || [];
+      d.chapters = await syncChatTopicsToChapters(x.id, savedMessages, d.chapters || [], d.sections || []);
+    } catch {
+      // Keep the workspace usable even if chat history is temporarily unavailable.
+    }
     const sessionUser = await currentUser();
     try {
       window.localStorage.setItem('research-room:selected-workspace:' + sessionUser.id, x.id);
@@ -684,10 +712,11 @@ function App() {
     W(d.workspace);
     M((d.members || []).map((member: any) => {
       const profile = profileRows.find((item: any) => item.user_id === member.userId);
-      return { ...member, name: member.name || profile?.display_name || 'Researcher', avatarUrl: profile?.avatar_url || (member.userId === sessionUser.id ? avatarUrl : '') };
+      return { ...member, name: profile?.display_name || member.name || 'Researcher', avatarUrl: profile?.avatar_url || (member.userId === sessionUser.id ? avatarUrl : '') };
     }));
     S((d.sections || []).sort((a: S, b: S) => a.order - b.order));
     CHAPTERS(d.chapters || []);
+    CM(savedMessages);
     T(d.tasks || []);
     MT(d.meetings || []);
     const notificationResult = await supabase.from('research_notifications').select('*').eq('recipient_id', sessionUser.id).order('created_at', { ascending: false }).limit(25);
@@ -750,7 +779,6 @@ function App() {
     if (!selected || selected.id === w?.id) return;
     void run(async () => {
       await load(selected);
-      CM([]);
       P('Overview');
     }, 'Workspace switched.');
   };
@@ -977,6 +1005,20 @@ function App() {
     CHAPTER_DRAFT(''); SID(''); ST(''); SC('');
     SCHAPTER(name); EXPCHAPTER(name); MOD('');
   }, 'Chapter created. It is now available as a chat topic.');
+  const createOrOpenChatTopic = (topic: string, openDocument: boolean) => {
+    const name = topic.trim();
+    if (!name) { E('Enter a topic name after the command.'); return; }
+    if (name.length > 100) { E('Topic names must be 100 characters or fewer.'); return; }
+    void run(async () => {
+      const existing = chapters.some(chapter => chapter.title.trim().toLowerCase() === name.toLowerCase()) ||
+        sections.some(section => (section.chapter || 'Chapter 1').trim().toLowerCase() === name.toLowerCase());
+      if (!existing) await call('post', '/api/chapters', { workspaceId: w!.id, title: name, chapterOrder: chapters.length });
+      await load(w!);
+      CTopic(name); CFILTER(name); CSEARCH('');
+      SCHAPTER(name); EXPCHAPTER(name);
+      P(openDocument ? 'Document' : 'Chat');
+    }, 'Chat topic and document chapter are now connected.');
+  };
   const addTask = () =>
     run(async () => {
       if (!isOwner) throw Error('Only the workspace owner can create tasks or set deadlines.');
@@ -1045,6 +1087,28 @@ function App() {
   });
   const markAllNotificationsRead = () => run(async () => { const readAt = new Date().toISOString(); const result = await supabase.from('research_notifications').update({ read_at: readAt }).eq('recipient_id', user!.userId).is('read_at', null); if (result.error) throw result.error; NOTIFS(items => items.map(item => item.readAt ? item : { ...item, readAt })); }, 'Notifications marked as read.');
   const requestBrowserNotifications = async () => { if (!('Notification' in window)) { MSG('This browser does not support desktop notifications.'); return; } try { const permission = await window.Notification.requestPermission(); MSG(permission === 'granted' ? 'Desktop notifications enabled.' : 'Desktop alerts were not enabled; in-app notifications still work.'); } catch { MSG('Could not enable desktop notifications in this browser.'); } };
+  const saveProfile = (e: any) => {
+    e.preventDefault();
+    return run(async () => {
+      const displayName = profileName.trim();
+      if (!displayName) throw new Error('Your display name is required.');
+      const authUpdate = await supabase.auth.updateUser({ data: { full_name: displayName, avatar_url: profileAvatar } });
+      if (authUpdate.error) throw authUpdate.error;
+      const current = authUpdate.data.user || await currentUser();
+      const workspaceIds = [...new Set([...spaces.map(space => space.id), ...(w?.id ? [w.id] : [])])];
+      if (workspaceIds.length) {
+        const savedProfiles = await supabase.from('research_member_profiles').upsert(
+          workspaceIds.map(workspaceId => ({ workspace_id: workspaceId, user_id: current.id, display_name: displayName, avatar_url: profileAvatar, updated_at: new Date().toISOString() })),
+          { onConflict: 'workspace_id,user_id' }
+        );
+        if (savedProfiles.error) throw savedProfiles.error;
+      }
+      U(userView(current));
+      PROFILE_NAME(displayName);
+      PROFILE_AVATAR(profileAvatar);
+      M(currentMembers => currentMembers.map(member => member.userId === current.id ? { ...member, name: displayName, avatarUrl: profileAvatar } : member));
+    }, 'Profile updated across your workspaces.');
+  };
   const saveSettings = (e: any) => {
     e.preventDefault();
     return run(async () => {
@@ -1064,7 +1128,10 @@ function App() {
   const refreshChat = async () => {
     if (!w) return;
     const d = await call('get', '/api/workspaces/' + w.id + '/messages');
-    CM(d.messages || []);
+    const messages = d.messages || [];
+    const latestChapters = await syncChatTopicsToChapters(w.id, messages, chapters, sections);
+    if (latestChapters !== chapters) CHAPTERS(latestChapters);
+    CM(messages);
   };
   const sendChat = (mentionedUserIds: string[] = []) =>
     run(async () => {
@@ -1085,7 +1152,12 @@ function App() {
     const refresh = async () => {
       try {
         const d = await call('get', '/api/workspaces/' + w.id + '/messages');
-        if (active) CM(d.messages || []);
+        const messages = d.messages || [];
+        const latestChapters = await syncChatTopicsToChapters(w.id, messages, chapters, sections);
+        if (active) {
+          if (latestChapters !== chapters) CHAPTERS(latestChapters);
+          CM(messages);
+        }
       } catch (e) {
         if (active) E(e instanceof Error ? e.message : 'Could not refresh team chat.');
       }
@@ -1096,7 +1168,7 @@ function App() {
       active = false;
       window.clearInterval(timer);
     };
-  }, [page, w?.id]);
+  }, [page, w?.id, chapters, sections]);
   const completed = tasks.filter(t => t.status === 'Done').length,
     progress = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
   const chapterOptions = Array.from(new Set(['Chapter 1', ...chapters.map(chapter => chapter.title), ...sections.map(section => section.chapter || 'Chapter 1')]))
@@ -1134,6 +1206,7 @@ function App() {
     return () => { void supabase.removeChannel(channel); };
   }, [user?.userId]);
   const nav = [
+    ['Workspaces', Layers3],
     ['Overview', LayoutDashboard],
     ['Document', BookOpen],
     ['Tasks', ListTodo],
@@ -1393,16 +1466,15 @@ function App() {
           <p>
             {completed} of {tasks.length} tasks completed
           </p>
-          <button className="profile" onClick={signout}>
-            <span className="avatar">
-              {(user.name || user.email || 'R').slice(0, 1).toUpperCase()}
-            </span>
+          <button className="profile" onClick={() => P('Settings')}>
+            <span className="avatar"><AvatarArt value={user.avatarUrl} name={user.name || user.email || 'Researcher'} /></span>
             <span>
               {user.name || user.email || 'Researcher'}
-              <small>Sign out</small>
+              <small>Edit profile</small>
             </span>
-            <LogOut size={15} />
+            <Settings size={15} />
           </button>
+          <button className="profile-signout" onClick={signout}><LogOut size={14} /> Sign out</button>
         </div>
       </aside>
       {mobile && <button className="scrim" onClick={() => MOB(false)} />}
@@ -1431,6 +1503,27 @@ function App() {
               {err}
               <button onClick={() => E('')}>×</button>
             </div>
+          )}
+          {page === 'Workspaces' && (
+            <>
+              <div className="heading workspace-list-heading">
+                <div><small>YOUR RESEARCH SPACES</small><h1>All workspaces</h1><p>Return to any group you belong to, or start another research space.</p></div>
+                <div className="workspace-list-actions">
+                  <button type="button" className="secondary" onClick={() => { CODE(''); MOD('join'); }}><Users size={15} /> Join with code</button>
+                  <button type="button" className="primary" onClick={() => { WF({ title: 'Research workspace', researchTitle: '', institution: '', program: 'Bachelor of Science in Information Technology' }); MOD('create'); }}><Plus size={15} /> New workspace</button>
+                </div>
+              </div>
+              <div className="workspace-list-grid">
+                {spaces.map(space => <article className={'panel workspace-list-card' + (space.id === w.id ? ' current' : '')} key={space.id}>
+                  <div className="workspace-list-card-top"><span className="workspace-list-icon"><Layers3 size={20} /></span>{space.id === w.id && <span className="workspace-current-label">CURRENT</span>}</div>
+                  <h3>{space.title}</h3>
+                  <p>{space.researchTitle || 'No thesis title has been added yet.'}</p>
+                  <div className="workspace-list-meta">{space.institution || 'Institution not set'}{space.program ? ' · ' + space.program : ''}</div>
+                  <button type="button" className={space.id === w.id ? 'primary' : 'secondary'} onClick={() => space.id === w.id ? P('Overview') : switchWorkspace(space.id)}>{space.id === w.id ? 'Return to workspace' : 'Open workspace'} <ChevronRight size={15} /></button>
+                </article>)}
+                <article className="panel workspace-add-card"><span className="workspace-list-icon"><Plus size={20} /></span><h3>Add a workspace</h3><p>Create a separate space for another project or join a group with its invite code.</p><div><button type="button" className="secondary" onClick={() => { CODE(''); MOD('join'); }}><Users size={14} /> Join existing</button><button type="button" className="primary" onClick={() => { WF({ title: 'Research workspace', researchTitle: '', institution: '', program: 'Bachelor of Science in Information Technology' }); MOD('create'); }}><Plus size={14} /> Create new</button></div></article>
+              </div>
+            </>
           )}
           {page === 'Overview' && (
             <>
@@ -1613,7 +1706,7 @@ function App() {
                       const online = onlineUserIds.includes(member.userId);
                       return <div className="presence-member-row" key={member.id}>
                         <span className="member-avatar">
-                          {member.avatarUrl ? <img src={member.avatarUrl} alt={member.name + ' profile'} referrerPolicy="no-referrer" /> : (member.name || '?').slice(0, 1).toUpperCase()}
+                          <AvatarArt value={member.avatarUrl} name={member.name} />
                           <i className={'presence-dot ' + (online ? 'online' : 'offline')} />
                         </span>
                         <span className="presence-member-copy"><b>{member.name || 'Researcher'}{member.userId === user.userId ? ' (You)' : ''}</b><small>{member.role === 'owner' ? 'Owner / Leader' : 'Member'}</small></span>
@@ -1888,7 +1981,7 @@ function App() {
             </>
           )}
           {page === 'Meetings' && <ResearchMeetings canManage={isOwner} meetings={meetings} expanded={meetingsExpanded} onToggleExpanded={() => MEETINGS_EXPANDED(v => !v)} selected={selectedMeeting} onSelect={selectMeeting} onDelete={id => CONF(id)} selectedAgenda={selectedMeeting && agendaDraftForMeetingId === selectedMeeting.id ? meetingAgendaDraft : (selectedMeeting?.agenda || [])} onChangeSelectedAgenda={(items,id) => { MADI(id); MAD(items); }} onSaveAgenda={() => void saveMeetingAgenda()} onSaveNotes={saveMeetingNotes} form={mf} onFormChange={(key,value) => MF(current => ({...current,[key]:value}))} agenda={agendaItems} onNewAgendaChange={AITEMS} onCreate={() => void addMeeting()} busy={busy} onDashboard={() => P('Overview')} />}
-          {page === 'Chat' && <ResearchChat workspaceTitle={w.title} memberCount={members.length} refresh={() => void refreshChat()} search={chatSearch} onSearch={CSEARCH} filter={chatFilter} onFilter={CFILTER} messages={chatMessages} visible={visibleChatMessages} userId={user.userId} topics={chatTopics} chapterTopics={chapterOptions} onOpenChapter={openChapterDocument} topic={chatTopic} onTopic={CTopic} draft={chatDraft} onDraft={CD} busy={busy} send={ids => void sendChat(ids)} members={members} onlineUserIds={onlineUserIds} /> }
+          {page === 'Chat' && <ResearchChat workspaceTitle={w.title} memberCount={members.length} refresh={() => void refreshChat()} search={chatSearch} onSearch={CSEARCH} filter={chatFilter} onFilter={CFILTER} messages={chatMessages} visible={visibleChatMessages} userId={user.userId} topics={chatTopics} chapterTopics={chapterOptions} onOpenChapter={openChapterDocument} topic={chatTopic} onTopic={CTopic} draft={chatDraft} onDraft={CD} busy={busy} send={ids => void sendChat(ids)} members={members} onlineUserIds={onlineUserIds} onCreateTopic={createOrOpenChatTopic} onNavigate={target => P(target)} /> }
           {page === 'Team' && (
             <>
               <div className="heading">
@@ -1917,7 +2010,7 @@ function App() {
                 {members.map((m, i) => (
                   <div className="member" key={m.id}>
                     <span className="member-avatar">
-                      {m.avatarUrl ? <img src={m.avatarUrl} alt={m.name + ' profile'} referrerPolicy="no-referrer" /> : (m.name || '?').slice(0, 1).toUpperCase()}
+                      <AvatarArt value={m.avatarUrl} name={m.name} />
                       <i className={'presence-dot ' + (onlineUserIds.includes(m.userId) ? 'online' : 'offline')} />
                     </span>
                     <span className="member-identity">
@@ -1941,6 +2034,23 @@ function App() {
                   <p>Keep your institution and thesis title consistent.</p>
                 </div>
               </div>
+              <section className="panel profile-editor">
+                <div className="profile-editor-heading"><div><h3>Your profile</h3><p>Choose a display name and one of ten original geometric icon avatars. Your choice appears beside chat messages and across your team.</p></div><span className="profile-editor-preview"><AvatarArt value={profileAvatar} name={profileName || user.name || 'Researcher'} /></span></div>
+                <form onSubmit={saveProfile}>
+                  <label>Display name<input required maxLength={80} value={profileName} onChange={event => PROFILE_NAME(event.target.value)} placeholder="Your name" /></label>
+                  <div className="profile-avatar-prompt"><strong>Choose an icon avatar</strong><small>Simple original shapes, saved to your profile</small></div>
+                  <div className="avatar-choice-grid" role="group" aria-label="Choose one of ten profile icon avatars">
+                    {AVATAR_OPTIONS.map(avatar => {
+                      const value = 'shape-avatar:' + avatar.id;
+                      return <button type="button" key={avatar.id} className={'avatar-choice' + (profileAvatar === value ? ' selected' : '')} aria-pressed={profileAvatar === value} onClick={() => PROFILE_AVATAR(value)}>
+                        <AvatarArt value={value} name={avatar.name} />
+                        <span>{avatar.name}</span>
+                      </button>;
+                    })}
+                  </div>
+                  <button className="primary" type="submit" disabled={busy}><Save size={15} /> Save profile</button>
+                </form>
+              </section>
               <section className="panel settings">
                 <h3>Institution & thesis details</h3>
                 <form onSubmit={saveSettings}>

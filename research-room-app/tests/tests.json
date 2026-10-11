@@ -13,7 +13,8 @@
       "workspace switcher",
       "workspace calendar",
       "upcoming meeting dashboard summary",
-      "ownership transfer"
+      "ownership transfer",
+      "workspace list navigation and card selection"
     ],
     "description": "Verifies a signed-in researcher can create a workspace and see its saved thesis settings.",
     "steps": [
@@ -25,6 +26,8 @@
       "Create a second workspace from the active workspace",
       "Switch between the two workspaces using the selector",
       "Refresh and verify the selected workspace is restored",
+      "Open All workspaces and verify every joined workspace appears as a card",
+      "Open another workspace from its card and return to All workspaces",
       "Schedule a research meeting with a date and time",
       "Confirm its date and time appear on the dashboard calendar",
       "Transfer ownership to another workspace member and confirm the new owner is shown"
@@ -49,7 +52,8 @@
       "custom section creation",
       "explicit chapter creation",
       "chapters synchronize with chat topics",
-      "document change notifications"
+      "document change notifications",
+      "custom and legacy chat topics become saved document chapters"
     ],
     "description": "Verifies editing a proposal section persists after navigating away and returning.",
     "steps": [
@@ -65,6 +69,10 @@
       "Open a section and review its creator, last editor, and modification time",
       "Create a custom section, save it, and verify creator attribution is shown",
       "Create a new chapter using Add chapter and confirm it appears in the document chapter list",
+      "Send a chat message under a custom topic and verify that topic becomes a saved document chapter",
+      "Open Chat and enter /help to review supported slash commands",
+      "Enter /topic Research Design and verify Chat switches to the topic and Document lists Research Design",
+      "Enter /chapter Chapter 3 and verify Document opens with Chapter 3 selected",
       "Open Chat and confirm the new chapter is available as a matching chat topic",
       "As another team member, edit a section and verify a document notification arrives with the section name"
     ],
@@ -111,7 +119,10 @@
       "live online indicators",
       "chapter topics synchronized with document chapters",
       "member @mentions",
-      "mention-specific notifications"
+      "mention-specific notifications",
+      "chat slash command help and navigation",
+      "create linked topics and chapters from chat commands",
+      "profile name editing and ten geometric SVG avatars"
     ],
     "description": "Verifies workspace members can send messages and see each other's saved messages.",
     "steps": [
@@ -129,7 +140,8 @@
       "Verify presence indicators appear beside online members",
       "Create a chapter in Document and verify its name becomes a chat topic",
       "Select a teammate using the @mention suggestions and send the message",
-      "Verify the mentioned member receives a mention-specific notification and opening it goes to Chat"
+      "Verify the mentioned member receives a mention-specific notification and opening it goes to Chat",
+      "Open Settings, edit the display name, choose a geometric avatar, save, and confirm it appears in Team and Chat"
     ],
     "expected": "Messages retain their topic, members can filter/search research discussions, and messages persist across refresh. Chat rail contains topics only; selected topic is prominent and notifications remain global. Message rows show member avatars, and the emoji picker supports the full searchable emoji catalogue. Chapter groups are shared between Document and Chat, and @mentions generate dedicated notifications for the mentioned teammate."
   },
@@ -147,7 +159,8 @@
       "emoji insertion",
       "owner-only meeting creation",
       "members view meetings in read-only mode",
-      "workspace presence"
+      "workspace presence",
+      "workspace list navigation"
     ],
     "description": "Verifies a second member can join by code and access the workspace's shared proposal sections.",
     "steps": [

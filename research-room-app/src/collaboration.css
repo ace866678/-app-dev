@@ -85,3 +85,56 @@
 .notification-kind-icon.document{background:#eeecff;color:#6056c4}
 .notification-kind-icon.mention{background:#e7f6ff;color:#287aa7}
 @media(max-width:600px){.chapter-manager{padding:14px}.chapter-manager .panel-head{align-items:flex-start}.chapter-chip-list{gap:6px}.chapter-chip-name{font-size:10px;padding:6px}.chat-composer-top{gap:8px;flex-wrap:wrap}}
+
+/* Workspace list, saved geometric avatars, profile controls, and slash commands */
+.avatar-art{display:block;width:100%;height:100%;flex:none;object-fit:cover;border-radius:50%}
+.avatar-art-fallback{display:grid;place-items:center;background:#eeecff;color:#5d53bd;font-size:inherit;font-weight:800}
+.member-avatar>.avatar-art,.chat-avatar>.avatar-art,.mention-option-avatar>.avatar-art,.avatar>.avatar-art{width:100%;height:100%;border-radius:50%}
+.avatar-choice-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:12px 0 18px}
+.avatar-choice{display:flex;align-items:center;flex-direction:column;gap:8px;min-width:0;padding:12px 6px;border:1px solid #e7e8f1;border-radius:13px;background:#fff;color:#626980;font-size:11px;font-weight:700;transition:border-color .15s,background .15s,transform .15s}
+.avatar-choice>.avatar-art{width:48px;height:48px}
+.avatar-choice:hover{border-color:#beb8f6;transform:translateY(-1px)}
+.avatar-choice.selected{border-color:#7467e0;background:#f3f1ff;box-shadow:0 0 0 2px #7467e018}
+.profile-editor{padding:22px;margin-bottom:16px}
+.profile-editor-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:18px}
+.profile-editor-heading h3{margin:0 0 6px;color:#30364e;font-size:16px}
+.profile-editor-heading p{max-width:600px;margin:0;color:#81879b;font-size:12px;line-height:1.7}
+.profile-editor-preview{width:68px;height:68px;flex:none;padding:4px;border:1px solid #e6e7f1;border-radius:50%;background:#fff}
+.profile-editor-preview>.avatar-art{width:100%;height:100%}
+.profile-editor form{display:grid;gap:12px}
+.profile-editor form>label{display:flex;flex-direction:column;gap:7px;color:#50566c;font-size:12px;font-weight:700}
+.profile-editor form>label input{width:100%;max-width:520px;padding:12px;border:1px solid #e3e5ef;border-radius:9px;background:#fff;color:#292e45}
+.profile-avatar-prompt{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.profile-avatar-prompt strong{font-size:12px;color:#434a61}
+.profile-avatar-prompt small{font-size:10px;color:#8b90a3;letter-spacing:0}
+.profile-editor form>.primary{justify-self:start}
+.profile-signout{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;margin-top:7px;padding:8px 10px;border:1px solid #e8e9f1;border-radius:9px;background:transparent;color:#777d91;font-size:11px;font-weight:700}
+.profile-signout:hover{background:#fff;color:#4d5268}
+.workspace-list-heading{align-items:flex-end;gap:18px;flex-wrap:wrap}
+.workspace-list-actions{display:flex;gap:8px;flex-wrap:wrap}
+.workspace-list-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.workspace-list-card{display:flex;flex-direction:column;align-items:stretch;min-width:0;padding:20px;gap:11px;border:1px solid #e9ebf3;transition:box-shadow .15s,border-color .15s}
+.workspace-list-card.current{border-color:#c6c0f4;box-shadow:0 0 0 2px #6558d910}
+.workspace-list-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.workspace-list-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:#f0efff;color:#6558d9}
+.workspace-current-label{padding:5px 8px;border-radius:999px;background:#efedff;color:#6256cc;font-size:9px;font-weight:800;letter-spacing:.5px}
+.workspace-list-card h3,.workspace-add-card h3{margin:0;color:#30364e;font-size:15px;overflow-wrap:anywhere}
+.workspace-list-card>p,.workspace-add-card>p{margin:0;color:#777e94;font-size:12px;line-height:1.65;overflow-wrap:anywhere}
+.workspace-list-meta{min-height:32px;color:#9096a8;font-size:10px;line-height:1.6;overflow-wrap:anywhere}
+.workspace-list-card>button{align-self:flex-start;margin-top:auto}
+.workspace-add-card{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:12px;padding:20px;border:1px dashed #d6d8e7;background:#fbfbff}
+.workspace-add-card>div{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.chat-command-menu{position:relative;z-index:4;display:flex;flex-direction:column;gap:2px;max-height:300px;overflow:auto;margin:8px 0;padding:9px;border:1px solid #e5e6f0;border-radius:12px;background:#fff;box-shadow:0 12px 30px #2f315012}
+.chat-command-menu-heading{display:flex;flex-direction:column;gap:4px;padding:5px 7px 9px}
+.chat-command-menu-heading span{font-size:11px;color:#3b4057;font-weight:800}
+.chat-command-menu-heading small{font-size:9px;color:#8a8fa2;letter-spacing:0}
+.chat-command-menu>button{display:grid;grid-template-columns:125px minmax(0,1fr) 14px;align-items:center;gap:8px;width:100%;padding:8px;border:0;border-radius:8px;background:transparent;text-align:left;cursor:pointer}
+.chat-command-menu>button:hover{background:#f5f4ff}
+.chat-command-menu code{color:#5e54c2;font-size:10px;font-weight:800;white-space:nowrap}
+.chat-command-menu>button span{color:#7a8094;font-size:10px;line-height:1.4}
+.chat-command-menu>button svg{color:#9b9fb1}
+.chat-command-notice{margin:8px 0;color:#725fc1;font-size:11px}
+.chat-action-label{display:inline-block;margin-right:4px;padding:2px 5px;border-radius:4px;background:#eeecff;color:#6558d9;font-size:8px;font-weight:800;letter-spacing:.5px;vertical-align:middle}
+@media(max-width:800px){.workspace-list-grid{grid-template-columns:1fr}.avatar-choice-grid{grid-template-columns:repeat(5,minmax(0,1fr))}.workspace-list-heading{align-items:flex-start}}
+@media(max-width:520px){.profile-editor{padding:15px}.avatar-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.avatar-choice{flex-direction:row;justify-content:flex-start;padding:8px}.avatar-choice>.avatar-art{width:38px;height:38px}.profile-editor-heading{align-items:flex-start}.profile-editor-preview{width:52px;height:52px}.workspace-list-actions{width:100%}.workspace-list-actions>button{flex:1}.chat-command-menu>button{grid-template-columns:90px minmax(0,1fr) 14px}.chat-command-menu code{font-size:9px}}
+
