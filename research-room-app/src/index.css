@@ -2297,3 +2297,346 @@ hr,
     animation: none !important;
   }
 }
+
+/* Accessibility polish: preserve the pastel glass aesthetic without sacrificing contrast. */
+:root {
+  --ink: #252b43 !important;
+  --muted: #566078 !important;
+  --line: #dce2ef !important;
+  --purple: #594bc7 !important;
+}
+html, body, #root {
+  color: #2a3048;
+}
+body {
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+/* Glass surfaces were nearly transparent, allowing the animated background to
+   compete with labels and body copy. Make reading surfaces softly opaque. */
+.panel,
+.sidebar,
+.top,
+.modal,
+.chat-right-rail,
+.workspace-management,
+.workspace-empty-options .panel,
+.workspace-empty-brand,
+.dashboard-upcoming-meetings,
+.setup article,
+.agenda-builder,
+.space-label,
+.notifications-popover,
+.chat-header-prominent {
+  background-color: rgba(255, 255, 255, .84) !important;
+  border-color: rgba(133, 143, 174, .30) !important;
+  color: #2d334c;
+  box-shadow: 0 10px 30px rgba(48, 55, 92, .075) !important;
+}
+.auth-left {
+  background: rgba(255, 255, 255, .76) !important;
+  color: #252b43 !important;
+  border-right: 1px solid rgba(133, 143, 174, .34) !important;
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+}
+.auth-left p,
+.auth-left > small {
+  color: #4f5872 !important;
+}
+.auth-left > div:nth-child(2) > small {
+  color: #5648bc !important;
+  font-size: 11px !important;
+}
+.auth-left h1,
+.auth-left h1 em {
+  color: #272c45 !important;
+}
+.auth-left h1 em {
+  color: #5b4dc5 !important;
+}
+.auth-left p {
+  font-size: 16px !important;
+  line-height: 1.8 !important;
+}
+
+/* Sign-in card, inputs and labels now have clear foreground/background contrast. */
+.auth-box {
+  background: rgba(255, 255, 255, .93) !important;
+  border: 1px solid rgba(121, 132, 164, .34) !important;
+  box-shadow: 0 22px 62px rgba(47, 53, 90, .16) !important;
+  color: #252b43 !important;
+}
+.auth-box h2 {
+  color: #242a41 !important;
+  font-size: 28px !important;
+  line-height: 1.25 !important;
+}
+.auth-box p {
+  color: #46506a !important;
+  font-size: 14px !important;
+  line-height: 1.7 !important;
+}
+.auth-box > small {
+  color: #505a73 !important;
+  font-size: 12px !important;
+  line-height: 1.55 !important;
+}
+.auth-form {
+  gap: 15px !important;
+}
+.auth-form label,
+.modal label,
+.panel label {
+  color: #343b54 !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+}
+.auth-form input {
+  min-height: 54px !important;
+  padding: 14px 16px !important;
+  background: #fff !important;
+  color: #242a41 !important;
+  border: 1px solid #b9c3d8 !important;
+  font-size: 16px !important;
+}
+input,
+textarea,
+select,
+.modal input,
+.panel input,
+.panel textarea,
+.panel select {
+  background-color: #fff !important;
+  color: #252b43 !important;
+  border-color: #bcc6d9 !important;
+  font-size: 14px;
+}
+input::placeholder,
+textarea::placeholder {
+  color: #737e95 !important;
+  opacity: 1 !important;
+}
+.auth-form input:focus,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  border-color: #7164d5 !important;
+  box-shadow: 0 0 0 3px rgba(101, 88, 217, .18) !important;
+  outline: none;
+}
+.auth-reset {
+  color: #493dab !important;
+  font-size: 14px !important;
+}
+.auth-divider {
+  color: #626b82 !important;
+  font-size: 12px !important;
+}
+.auth-divider::before,
+.auth-divider::after {
+  background: #dce1ed !important;
+}
+.auth-box .mark {
+  background: #eeeaff !important;
+  color: #594bc7 !important;
+  border: 1px solid #d9d2ff !important;
+}
+
+/* Use a brand-colored primary action and a white Google sign-in button. */
+.primary,
+button.primary,
+.auth-box .primary,
+button.wide.primary {
+  background: #5b4cc4 !important;
+  color: #fff !important;
+  border: 1px solid #5142b5 !important;
+  box-shadow: 0 4px 12px rgba(74, 62, 169, .16) !important;
+  font-size: 14px !important;
+}
+.primary:hover,
+button.primary:hover,
+.auth-box .primary:hover {
+  background: #4839ad !important;
+  border-color: #4839ad !important;
+}
+.primary.red,
+.primary.red:hover {
+  background: #b52f45 !important;
+  border-color: #a8283c !important;
+  color: #fff !important;
+}
+.secondary,
+.notification-button,
+.close,
+.chat-refresh-icon,
+.emoji-toggle,
+.icon-quiet,
+.topic-nav-item,
+.section-row,
+.calendar-day {
+  background: rgba(255, 255, 255, .92) !important;
+  color: #35405a !important;
+  border-color: #d3dced !important;
+}
+.secondary:hover,
+.notification-button:hover,
+.topic-nav-item:hover,
+.section-row:hover,
+.calendar-day:hover {
+  background: #f1efff !important;
+  border-color: #c5bef4 !important;
+}
+.auth-box .auth-form .secondary {
+  min-height: 50px !important;
+  background: #fff !important;
+  color: #35405a !important;
+  border: 1px solid #d2d9e8 !important;
+  font-size: 14px !important;
+}
+.auth-box .google-auth {
+  min-height: 54px !important;
+  gap: 11px !important;
+  border: 1px solid #c5cede !important;
+  background: #fff !important;
+  color: #283148 !important;
+  font-size: 14px !important;
+  box-shadow: 0 1px 2px rgba(28, 39, 70, .06) !important;
+}
+.auth-box .google-auth:hover {
+  background: #f8faff !important;
+  border-color: #a9b6cd !important;
+  box-shadow: 0 2px 8px rgba(28, 39, 70, .10) !important;
+}
+.google-logo {
+  display: block;
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+}
+
+/* Improve readability in workspace navigation, summaries, forms and content. */
+.sidebar nav button {
+  color: #434c66 !important;
+  font-size: 13px !important;
+}
+.sidebar nav button.active {
+  background: #eeecff !important;
+  border-color: #d1caff !important;
+  color: #4436a5 !important;
+}
+.top > span {
+  color: #5b647b !important;
+  font-size: 13px !important;
+}
+.heading p,
+.welcome-inner > p,
+.workspace-empty-title p,
+.workspace-empty-brand p,
+.panel p:not(.error),
+.setup article p,
+.workspace-list-card > p,
+.workspace-add-card > p,
+.workspace-action-row small,
+.row small,
+.member-identity > small,
+.stats p,
+.agenda-row,
+.task-card p,
+.chat-message p,
+.notifications-empty p,
+.notification-row-copy b,
+.notification-row-copy small,
+.chat-composer-top,
+.chat-active-topic,
+.topic-rail-note,
+.muted,
+.editor-foot,
+.task-assignee-readonly {
+  color: #525c74 !important;
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+}
+.heading p,
+.welcome-inner > p,
+.workspace-empty-title p,
+.workspace-empty-brand p,
+.setup article p,
+.workspace-list-card > p,
+.workspace-add-card > p {
+  font-size: 14px !important;
+}
+.panel > h3,
+.panel-head h3,
+.workspace-management-head h3 {
+  color: #2b3149 !important;
+  font-size: 15px !important;
+}
+.row b,
+.task-card > b,
+.member-identity > b,
+.profile-editor-heading h3 {
+  color: #2a3048 !important;
+  font-size: 13px !important;
+}
+.stats small,
+.stats p,
+.panel-head small,
+.profile small,
+.member small,
+.space-label small,
+.sidebar .brand small,
+.side-bottom,
+.chat-header-text small,
+.chat-composer-footer small,
+.workspace-list-meta {
+  color: #59637b !important;
+  font-size: 12px !important;
+}
+.modal input,
+.panel input,
+.panel textarea,
+.panel select {
+  min-height: 42px;
+  font-size: 14px !important;
+}
+.modal label,
+.panel label {
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+.editor textarea {
+  font-size: 14px !important;
+  line-height: 1.8 !important;
+}
+.tip {
+  color: #4f5871 !important;
+  font-size: 12px !important;
+}
+.status,
+.workspace-current-label,
+.chat-action-label,
+.role-pill,
+.presence-status {
+  font-size: 11px !important;
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid #6b5bd1 !important;
+  outline-offset: 3px !important;
+}
+@media (max-width: 760px) {
+  .auth-box {
+    padding: 23px !important;
+  }
+  .auth-box h2 {
+    font-size: 25px !important;
+  }
+  .auth-left h1 {
+    letter-spacing: -1.5px !important;
+  }
+  .content {
+    padding: 18px !important;
+  }
+}
