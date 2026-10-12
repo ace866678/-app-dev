@@ -5,6 +5,10 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 const requiredFiles = [
   "migration/export-supabase-data.js",
@@ -13,14 +17,17 @@ const requiredFiles = [
   "migration/package.json",
 ];
 
-const missing = requiredFiles.filter((file) => !existsSync(file));
+const missing = requiredFiles.filter((file) => !existsSync(resolve(repoRoot, file)));
 if (missing.length) {
   console.error("Preflight failed: required source files are missing.");
   for (const file of missing) console.error(` - ${file}`);
   process.exit(1);
 }
 
-const tracked = execFileSync("git", ["ls-files", "-z"], { encoding: "utf8" })
+const tracked = execFileSync("git", ["ls-files", "-z"], {
+  cwd: repoRoot,
+  encoding: "utf8",
+})
   .split("\0")
   .filter(Boolean);
 
@@ -29,7 +36,9 @@ const forbiddenPathPatterns = [
   /^migration\/firebase-import\//i,
   /^migration\/firebase-users\.json$/i,
   /^migration\/user-mapping\.json$/i,
-  /^migration\/.*(?:service-account.*\.json|\.pem|\.key)$/i,
+  /^migration\/\.env(?:\..*)?$/i,
+  /^migration\/.*(?:service-account|credential).*\.json$/i,
+  /^migration\/.*\.(?:pem|key|p12|pfx)$/i,
   /^migration\/(?:MIGRATION_REVIEW_REPORT|MIGRATION_STATUS_REPORT|ACCOUNT_CREATION_PLAN|PREFLIGHT_ACCOUNT_CREATION_REPORT)\.md$/i,
 ];
 
@@ -50,7 +59,7 @@ const secretPatterns = [
 ];
 
 for (const file of requiredFiles.filter((p) => p.endsWith(".js"))) {
-  const source = readFileSync(file, "utf8");
+  const source = readFileSync(resolve(repoRoot, file), "utf8");
   const matches = secretPatterns.filter(({ pattern }) => pattern.test(source));
   if (matches.length) {
     console.error(`Preflight failed: possible credential literal in ${file} (${matches.map((m) => m.label).join(", ")}).`);
