@@ -856,6 +856,13 @@ function App() {
       });
       if (error) throw error;
     });
+  const resetPassword = () =>
+    run(async () => {
+      const email = authEmail.trim();
+      if (!email) throw new Error('Enter your email address first.');
+      const { error } = await firebaseBackend.auth.resetPasswordForEmail(email);
+      if (error) throw error;
+    }, 'Password reset requested. If the address is registered, check its inbox and spam folder.');
   const signup = () =>
     run(async () => {
       if (authPassword.length < 6) throw new Error('Use a password with at least 6 characters.');
@@ -1290,6 +1297,16 @@ function App() {
                   placeholder={authMode === 'signin' ? 'Enter your password' : 'At least 6 characters'}
                 />
               </label>
+              {authMode === 'signin' && (
+                <button
+                  className="auth-reset"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void resetPassword()}
+                >
+                  Forgot password?
+                </button>
+              )}
               <button className="primary wide" type="submit" disabled={busy}>
                 {busy ? 'Please wait…' : authMode === 'signin' ? 'Sign in' : 'Create account'}
                 <ChevronRight size={16} />

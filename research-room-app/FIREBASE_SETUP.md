@@ -1,63 +1,72 @@
 # Research Room Firebase setup
 
-This branch switches the application backend calls to the Firebase Web SDK. It is not connected to the Firebase project until the Web App is registered, providers are enabled, Firestore is created, and the actual configuration values are supplied.
+## Existing Firebase project
 
-## Firebase project
-Use only project ID: `researchroom-71e70`.
+Use the existing Firebase project `researchroom-71e70`; do not create another project or web app.
 
-## 1. Register the web app
-The current connected tools do not have an authenticated Firebase project-management session, so web-app registration must be done from your computer/console.
+The registered web app reported for this project is:
 
-From a terminal after installing nothing manually, the Firebase CLI can be used:
+- App nickname: `research-room-app`
+- App ID: `1:955192172922:web:a84e7ca2f245d0831ab6c3`
+
+The application code reads its Firebase configuration from Vite environment variables. The App ID and sender ID are prefilled in `.env.example`; copy the exact `apiKey` shown under Firebase Console → Project settings → General → Your apps.
+
+## 1. Configure Authentication
+
+In Firebase Console, open **Authentication → Sign-in method** and enable:
+
+- **Email/Password**
+- **Google**, including a support email
+
+Then open **Authentication → Settings → Authorized domains**. Add `localhost` for local development and the stable Vercel preview hostname you intend to test. Add the production hostname only when you are ready to release. The Google provider domain is not a substitute for authorizing the hostname users open in their browser.
+
+## 2. Configure local environment
+
+From `research-room-app`, copy `.env.example` to `.env.local` and fill in the exact `VITE_FIREBASE_API_KEY` from the registered web app's configuration. Confirm the remaining values match that app before starting the dev server:
 
 ```bash
-npx -y firebase-tools@latest login
-npx -y firebase-tools@latest apps:create WEB "Research Room Web" --project researchroom-71e70
+npm install
+npm run dev
 ```
 
-Save the Web App ID returned by the second command. Retrieve the real config:
+`.env.local` and `.env` are ignored by Git. Never commit either file. Firebase web config is delivered to the browser by design; Firestore rules and Authentication provider settings must enforce access control.
 
-```bash
-npx -y firebase-tools@latest apps:sdkconfig <WEB_APP_ID> --project researchroom-71e70
-```
+## 3. Vercel Preview environment
 
-Alternatively, in Firebase Console: Project settings → General → Your apps → Add app → Web.
+In Vercel → **Research Room → Settings → Environment Variables**, add these variables to **Preview** first, using the same values as `.env.local`:
 
-## 2. Enable Authentication
-In Firebase Console, open Build → Authentication → Get started → Sign-in method. Enable Email/Password and Google; set a support email for Google. Add `localhost` and your preview/production hostnames under Authentication → Settings → Authorized domains when ready.
-
-## 3. Create Firestore
-In Firebase Console, open Build → Firestore Database → Create database. Select a region carefully; choose Singapore if available and appropriate. Do not deploy the prototype rules until you run Emulator Suite tests and review every permission path.
-
-## 4. Environment configuration
-From `research-room-app`, copy `.env.example` to `.env.local` and replace all placeholder values using the actual Web App config. Do not commit `.env.local`.
-
-Vercel → Project → Settings → Environment Variables: add these for Preview first, then redeploy:
 - `VITE_FIREBASE_API_KEY`
 - `VITE_FIREBASE_AUTH_DOMAIN`
 - `VITE_FIREBASE_PROJECT_ID`
-- `VITE_FIREBASE_STORAGE_BUCKET` (optional for current Auth/Firestore code)
 - `VITE_FIREBASE_MESSAGING_SENDER_ID`
 - `VITE_FIREBASE_APP_ID`
+- `VITE_FIREBASE_STORAGE_BUCKET` (optional; this app does not currently use Firebase Storage)
 
-## 5. Deploy Firestore rules only after testing
-After the database exists and you have reviewed the rules:
+Redeploy the Preview after setting environment variables. Do not change Production environment variables or promote this migration branch until the preview has been tested end to end.
 
-```bash
-npx -y firebase-tools@latest use researchroom-71e70
-npx -y firebase-tools@latest emulators:start --only auth,firestore --project demo-research-room
-```
+## 4. Firestore rules — verify before changing
 
-Only deploy after tests pass:
+The Kilo setup report says Firestore rules and indexes were deployed, but the deployed rules have not yet been compared with the version tracked in this repository. The checked-in `firestore.rules` file is explicitly a prototype and must **not** be blindly deployed to overwrite the currently deployed rules.
 
-```bash
-npx -y firebase-tools@latest deploy --only firestore:rules,firestore:indexes --project researchroom-71e70
-```
+Open Firebase Console → **Firestore Database → Rules** and compare the deployed version with `firestore.rules` on the migration branch. Reconcile the two versions, then run positive and negative tests in the Firebase Emulator Suite before deploying any replacement rules. Do not use open/test-mode rules.
 
-## Notes
-- The Firebase Web App is not registered by this commit. The registration command above creates it in the selected project after you authenticate.
-- Firebase Authentication users are not migrated from Supabase. Existing Supabase accounts and data remain in Supabase and are not copied.
-- The application uses a small compatibility adapter to minimize UI changes, but its authentication and data operations run through Firebase Auth/Firestore, not the Supabase SDK.
-- Online presence is stored in Firestore. This is best-effort client presence, not server-guaranteed disconnect detection; stronger presence uses Realtime Database.
-- Notifications are written client-side after user operations. Trusted event-driven automation would need additional backend infrastructure.
-- These Firestore rules are a prototype. Run positive and negative Emulator Suite tests before any production release.
+## 5. Test checklist
+
+Use a non-production Preview and a test account. Verify:
+
+1. Email/password account creation and sign-in.
+2. Password reset email request.
+3. Google sign-in on desktop and mobile.
+4. Creating a workspace creates the workspace, owner membership, and invitation.
+5. Joining with a valid invitation makes the new member visible; invalid or revoked invitations fail.
+6. Workspace chapters, sections, tasks, meetings, messages, and notifications persist after refresh.
+7. A user outside a workspace cannot read or modify its data.
+8. Ownership transfer and workspace deletion follow the intended authorization rules.
+
+## Migration notes
+
+- Firebase Authentication does not import Supabase users automatically.
+- Existing Supabase data is not copied into Firestore by this code change.
+- Keep Supabase fallback/production untouched until Firebase behavior and data migration requirements are confirmed.
+- Firestore-based presence is best-effort; it does not guarantee disconnect detection like a server-managed presence design.
+- Client-written notifications are not a substitute for trusted server-side events where tamper resistance is required.

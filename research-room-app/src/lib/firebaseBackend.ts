@@ -139,7 +139,18 @@ const authApi = {
     const unsubscribe = onAuthStateChanged(auth, user => {
       const event = first ? 'INITIAL_SESSION' : user ? 'SIGNED_IN' : 'SIGNED_OUT';
       first = false;
-      callback(event, legacySession(user));
+      if (!user) {
+        callback(event, null);
+        return;
+      }
+
+      // Google sign-in on mobile returns through a redirect. Make sure its
+      // private/public profile documents exist before the app loads workspace data.
+      void saveAuthProfiles(user)
+        .catch(error => {
+          console.warn('Could not sync the Firebase profile documents:', toError(error).message);
+        })
+        .finally(() => callback(event, legacySession(user)));
     });
     return { data: { subscription: { unsubscribe } } };
   },
