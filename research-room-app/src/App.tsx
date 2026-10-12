@@ -1528,6 +1528,9 @@ function App() {
             Workspace <ChevronRight size={14} /> <b>{page}</b>
           </span>
           <div className={showNotifications ? 'notifications-host open' : 'notifications-host'}><ResearchNotifications unread={unreadNotificationCount} notifications={notifications} onToggle={() => SHOW_NOTIFICATIONS(v => !v)} onClose={() => SHOW_NOTIFICATIONS(false)} open={notice => void openNotification(notice)} markRead={() => void markAllNotificationsRead()} enableDesktop={() => void requestBrowserNotifications()} /></div>
+          <button className="secondary invite top-signout" type="button" onClick={() => void signout()}>
+            <LogOut size={15} /> Sign out
+          </button>
           <button className="secondary invite" onClick={copy}>
             <Users size={15} /> Invite team
           </button>
