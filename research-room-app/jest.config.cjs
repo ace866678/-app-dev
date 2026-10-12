@@ -1,7 +1,7 @@
 module.exports = {
   testEnvironment: 'node',
   testTimeout: 30000,
-  testMatch: ['**/firestore-rules-tests.js'],
+  testMatch: ['**/firestore-rules-tests.cjs'],
   transform: {},
-  moduleFileExtensions: ['js', 'ts'],
+  moduleFileExtensions: ['cjs', 'js', 'ts'],
 };

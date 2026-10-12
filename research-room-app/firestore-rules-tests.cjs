@@ -29,7 +29,12 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await testEnv.cleanup();
+  try {
+    if (testEnv) await testEnv.cleanup();
+  } finally {
+    if (adminDb) await adminDb.terminate();
+    await Promise.all(getApps().map(app => app.delete()));
+  }
 });
 
 const workspaceId = 'ws_test';
