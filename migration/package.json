@@ -1,0 +1,14 @@
+{
+  "name": "research-room-migration",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "export:supabase": "node export-supabase-data.js",
+    "inventory:firebase": "node inventory-firebase-users.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4",
+    "firebase-admin": "^13.4.0"
+  }
+}
