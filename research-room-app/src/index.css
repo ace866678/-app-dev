@@ -2470,3 +2470,45 @@ hr,
   .auth-box button.primary:hover { transform: none !important; }
 }
 
+
+/* Notifications popover: the glass-surface rules above made it nearly
+   transparent, so page content showed through the list. Keep it a solid,
+   readable surface that sits above the page. */
+.notifications-host .notifications-popover {
+  z-index: 80;
+  background: #fbfbff !important;
+  background-image: none !important;
+  border: 1px solid rgba(144, 143, 187, .30) !important;
+  box-shadow: 0 18px 48px rgba(34, 34, 67, .20) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 16px 14px 12px;
+}
+.notifications-host .notification-row {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  border-radius: 10px;
+  padding: 10px 10px;
+}
+.notifications-host .notification-row:hover {
+  background: rgba(109, 99, 213, .07) !important;
+}
+.notifications-host .notification-row.unread {
+  background: rgba(109, 99, 213, .09) !important;
+}
+.notifications-host .notification-row-copy b {
+  color: #3f435c;
+  font-size: 11px;
+}
+.notifications-host .notification-popover-actions {
+  flex-wrap: wrap;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(144, 143, 187, .22);
+}
+.notifications-host .notification-popover-actions button {
+  flex: 1 1 auto;
+  white-space: nowrap;
+}
