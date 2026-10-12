@@ -1,0 +1,20 @@
+# Generated migration datasets contain user and research content; never commit them.
+supabase-export/
+firebase-import/
+firebase-users.json
+user-mapping.json
+
+# Credential and local configuration files.
+.env
+.env.*
+!.env.example
+service-account*.json
+*service-account*.json
+*.pem
+*.key
+
+# Reports can contain personal identifiers or migration mappings.
+MIGRATION_REVIEW_REPORT.md
+MIGRATION_STATUS_REPORT.md
+ACCOUNT_CREATION_PLAN.md
+PREFLIGHT_ACCOUNT_CREATION_REPORT.md
