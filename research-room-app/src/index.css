@@ -2305,3 +2305,168 @@ hr,
   height: 19px;
   flex: 0 0 19px;
 }
+
+/* Research Room sign-in: restore the purple hero panel without removing the
+   animated pastel background behind the translucent surfaces. */
+.auth {
+  background: transparent !important;
+  grid-template-columns: minmax(0, 1.1fr) minmax(340px, .9fr);
+  min-height: 100vh;
+  min-height: 100svh;
+}
+.auth-left {
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  overflow: hidden;
+  color: #fff !important;
+  background: linear-gradient(145deg, rgba(78, 60, 177, .95) 0%, rgba(102, 80, 207, .92) 54%, rgba(72, 53, 160, .95) 100%) !important;
+  border-right: 1px solid rgba(255,255,255,.24) !important;
+  box-shadow: 16px 0 44px rgba(52, 37, 132, .10);
+  -webkit-backdrop-filter: blur(18px) saturate(125%);
+  backdrop-filter: blur(18px) saturate(125%);
+}
+.auth-left .brand,
+.auth-left .brand .mark,
+.auth-left h1,
+.auth-left h1 em,
+.auth-left p,
+.auth-left > small {
+  color: #fff !important;
+}
+.auth-left .brand .mark {
+  background: rgba(255,255,255,.15) !important;
+  border: 1px solid rgba(255,255,255,.24);
+  box-shadow: 0 5px 18px rgba(33, 22, 99, .12);
+}
+.auth-left > div:nth-child(2) > small {
+  color: #e7e2ff !important;
+}
+.auth-left h1 em {
+  color: #ded7ff !important;
+}
+.auth-left p {
+  color: rgba(255,255,255,.86) !important;
+  max-width: 48ch;
+}
+.auth-left > small {
+  color: rgba(255,255,255,.74) !important;
+}
+.auth-right {
+  min-width: 0;
+  background: transparent !important;
+}
+.auth-box {
+  width: min(100%, 410px);
+  min-width: 0;
+  padding: clamp(22px, 2.6vw, 32px);
+  border: 1px solid rgba(255,255,255,.68) !important;
+  border-radius: 22px;
+  background: rgba(255,255,255,.86) !important;
+  box-shadow: 0 18px 52px rgba(57, 48, 117, .11) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(135%);
+  backdrop-filter: blur(22px) saturate(135%);
+  animation: rr-auth-enter 420ms cubic-bezier(.2,.7,.25,1) both;
+}
+.auth-box h2 { color: #292744 !important; }
+.auth-box p,
+.auth-box > small { color: #62617a !important; }
+.auth-form label { color: #3f3b5b !important; }
+.auth-form input {
+  color: #292744 !important;
+  background: rgba(255,255,255,.92) !important;
+  border-color: #d7d4e8 !important;
+}
+.auth-form input::placeholder { color: #85829b !important; }
+.auth-form input:focus-visible {
+  border-color: #7766db !important;
+  box-shadow: 0 0 0 3px rgba(103,83,203,.17) !important;
+}
+.auth-box .google-auth {
+  background: #fff !important;
+  color: #303047 !important;
+  border-color: #d8d8e4 !important;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+.auth-box .google-auth:hover {
+  transform: translateY(-1px);
+  border-color: #bcb4eb !important;
+  box-shadow: 0 5px 16px rgba(77, 60, 153, .10) !important;
+}
+.auth-box .primary,
+.auth-box button.primary {
+  transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+.auth-box .primary:hover,
+.auth-box button.primary:hover {
+  transform: translateY(-1px);
+}
+.auth-box button:focus-visible,
+.top .top-signout:focus-visible {
+  outline: 3px solid #8a7af0 !important;
+  outline-offset: 3px !important;
+}
+.top .top-signout {
+  flex-shrink: 0;
+  white-space: nowrap;
+  background: rgba(255,255,255,.92) !important;
+  color: #493c9e !important;
+  border: 1px solid #d5cff8 !important;
+}
+.top .top-signout:hover {
+  background: #f1efff !important;
+  border-color: #bfb5f0 !important;
+}
+@keyframes rr-auth-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 900px) {
+  .auth { grid-template-columns: minmax(0, 1fr) minmax(320px, .95fr); }
+  .auth-left { padding: 34px clamp(24px, 5vw, 48px); }
+  .auth-left > div:nth-child(2) { margin: 38px 0 28px; }
+  .auth-left h1 { font-size: clamp(34px, 5vw, 48px); letter-spacing: -1.5px; }
+  .auth-right { padding: 28px clamp(18px, 4vw, 32px); }
+}
+@media (max-width: 760px) {
+  .auth {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 100vh;
+    min-height: 100svh;
+  }
+  .auth-left {
+    min-height: 0;
+    padding: 24px clamp(20px, 6vw, 34px) 20px;
+    border-right: 0 !important;
+    border-bottom: 1px solid rgba(255,255,255,.20) !important;
+    box-shadow: 0 12px 30px rgba(52,37,132,.08);
+  }
+  .auth-left > div:nth-child(2) { margin: 24px 0 16px; }
+  .auth-left h1 { font-size: clamp(31px, 8vw, 42px); line-height: 1.12; letter-spacing: -1.2px; }
+  .auth-left p { font-size: 14px; line-height: 1.65; }
+  .auth-right { padding: 24px clamp(16px, 5vw, 26px) 32px; align-items: start; }
+  .auth-box { width: min(100%, 440px); margin-inline: auto; padding: clamp(20px, 5vw, 28px); border-radius: 18px; }
+  .auth-box h2 { font-size: clamp(22px, 6vw, 27px); }
+  .auth-form { gap: 12px; margin-top: 20px; }
+}
+@media (max-width: 520px) {
+  .top .invite:not(.top-signout) { display: none; }
+  .top .top-signout { padding: 9px 10px; font-size: 11px; }
+  .top .top-signout svg { width: 14px; height: 14px; }
+}
+@media (max-height: 760px) and (min-width: 761px) {
+  .auth-left { padding-block: 28px; }
+  .auth-left > div:nth-child(2) { margin-block: 30px; }
+  .auth-right { padding-block: 22px; }
+  .auth-box { padding-block: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-box { animation: none !important; }
+  .auth-box .google-auth,
+  .auth-box .primary,
+  .auth-box button.primary { transition: none !important; }
+  .auth-box .google-auth:hover,
+  .auth-box .primary:hover,
+  .auth-box button.primary:hover { transform: none !important; }
+}
+
