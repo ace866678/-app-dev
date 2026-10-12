@@ -17,6 +17,35 @@ Migrate Research Room application from Supabase (Auth + Postgres) to Firebase (A
 
 ---
 
+## Verified Data Inventory
+
+### Supabase Export Results (COMPLETED)
+| Table | Rows | Status |
+|-------|------|--------|
+| auth.users | 7 | ✅ Exported |
+| research_workspaces | 3 | ✅ Exported |
+| research_members | 8 | ✅ Exported |
+| research_sections | 36 | ✅ Exported |
+| research_tasks | 1 | ✅ Exported |
+| research_meetings | 7 | ✅ Exported |
+| research_messages | 14 | ✅ Exported |
+| research_notifications | 25 | ✅ Exported |
+| research_chapters | 11 | ✅ Exported |
+| research_member_profiles | 2 | ✅ Exported |
+| research_invitations | 0 | ❌ Table doesn't exist |
+| research_presence | 0 | ❌ Table doesn't exist |
+
+Output directory: `/workspace/app/migration/supabase-export/`
+
+### Firebase Auth Inventory Results (COMPLETED via CLI)
+| User | Email | Provider | UID |
+|------|-------|----------|-----|
+| dummy Account | dummyac76y@gmail.com | google.com | 0gGPz7uNMdaXETwdl0JJIUagC0Y2 |
+
+Total: 1 user
+
+---
+
 ## User Migration Strategy
 
 ### Critical: User IDs are NOT interchangeable
@@ -29,214 +58,114 @@ Migrate Research Room application from Supabase (Auth + Postgres) to Firebase (A
 2. **Preserve Supabase UUID** in Firestore documents as `supabase_user_id` field
 3. **Firebase UID** becomes the primary `user_id` in Firestore
 
-### Existing Firebase Users
-- 1 user: `dummyac76y@gmail.com` (Google provider, UID: `0gGPz7uNMdaXETwdl0JJIUagC0Y2`)
+### Actual User Mapping (from user-mapping.json)
+
+#### Matched Users (1)
+| Supabase User ID | Email | Firebase UID | Notes |
+|------------------|-------|--------------|-------|
+| fac73b09-d431-44e2-bd7d-e4a1e53240b8 | dummyac76y@gmail.com | 0gGPz7uNMdaXETwdl0JJIUagC0Y2 | Supabase: email provider | Firebase: Google provider |
+
+#### Supabase-Only Users (6) - Need Firebase Auth Accounts Created
+| Supabase User ID | Email | Verified | Provider | Metadata |
+|------------------|-------|----------|----------|----------|
+| 23335bad-27fb-4a06-adeb-cdc50fda8de3 | test@example.com | ❌ | email | - |
+| ef3cb0d3-874f-4f8a-88b7-a4d6677b8418 | nicojano200@gmail.com | ✅ | email | - |
+| df0a1c72-eeec-41fe-8b30-c99fb8c7a390 | am2801181@gmail.com | ✅ | email | - |
+| afb76be7-0510-49dc-8d7f-f4e171d6ab7a | freeupss@gmail.com | ❌ | email | - |
+| 5bf81aef-85ec-4951-bdcb-9dd1a2198eba | rodriguezfroilan82@gmail.com | ✅ | email | - |
+| e1522ad8-4d83-4c08-9b3a-1631741b3457 | delapuertaroniel@gmail.com | ✅ | email | full_name, avatar_url |
+
+#### Firebase-Only Users (0)
+None.
+
+### Duplicate User Handling Decision Needed
+**dummyac76y@gmail.com** exists in both systems with different auth providers:
+- Supabase: Email/password (ID: `fac73b09-d431-44e2-bd7d-e4a1e53240b8`)
+- Firebase: Google OAuth (UID: `0gGPz7uNMdaXETwdl0JJIUagC0Y2`)
+
+**Decision required**: 
+- Option A: Keep Firebase Google account as primary, link Supabase email as secondary provider
+- Option B: Create new Firebase email/password account, user must choose
+- Option C: Merge by keeping Firebase UID, update provider data
 
 ---
 
 ## Data Migration Mapping
 
-### 1. Auth Users → Firebase Auth + Firestore `users` + `publicProfiles`
-| Supabase | Firebase Auth | Firestore `users` | Firestore `publicProfiles` |
-|----------|---------------|-------------------|---------------------------|
-| id | (new UID) | uid | uid |
-| email | email | email | - |
-| email_confirmed_at | emailVerified | - | - |
-| user_metadata.full_name | displayName | display_name | display_name |
-| user_metadata.avatar_url | photoURL | photo_url | photo_url |
-| created_at | metadata.creationTime | - | - |
-| updated_at | metadata.lastSignInTime | updated_at | updated_at |
+### Source Tables → Destination Collections
 
-### 2. research_workspaces
-| Supabase | Firestore `research_workspaces` |
-|----------|--------------------------------|
-| id | id |
-| title | title |
-| research_title | research_title |
-| institution | institution |
-| program | program |
-| created_by | owner_id (mapped to Firebase UID) |
-| join_code | join_code |
-| created_at | created_at |
-| updated_at | updated_at |
-| (new) | supabase_workspace_id |
+| # | Supabase Table | Rows | Firestore Collection | Notes |
+|---|----------------|------|---------------------|-------|
+| 1 | auth.users | 7 | users + publicProfiles + Firebase Auth | Map emails to Firebase UIDs |
+| 2 | research_workspaces | 3 | research_workspaces | Add supabase_workspace_id |
+| 3 | research_members | 8 | research_members | Map user_id to Firebase UID, doc ID = workspace_id__user_id |
+| 4 | research_sections | 36 | research_sections | Map created_by, updated_by |
+| 5 | research_tasks | 1 | research_tasks | Map assignee_id, created_by |
+| 6 | research_meetings | 7 | research_meetings | Map created_by |
+| 7 | research_messages | 14 | research_messages | Map sender_id, mentioned_user_ids |
+| 8 | research_notifications | 25 | research_notifications | Map recipient_id, actor_id |
+| 9 | research_chapters | 11 | research_chapters | Map created_by |
+| 10 | research_member_profiles | 2 | research_member_profiles | Map user_id, doc ID = workspace_id__user_id |
+| 11 | research_invitations | 0 | research_invitations | Table doesn't exist in Supabase |
+| 12 | research_presence | 0 | research_presence | Table doesn't exist in Supabase |
 
-### 3. research_members
-| Supabase | Firestore `research_members` |
-|----------|-------------------------------|
-| id | id (workspace_id__user_id) |
-| workspace_id | workspace_id |
-| user_id | user_id (mapped to Firebase UID) |
-| name | display_name |
-| email | email |
-| role | role |
-| joined_at | joined_at |
-| (new) | supabase_user_id |
-
-### 4. research_sections
-| Supabase | Firestore `research_sections` |
-|----------|-------------------------------|
-| id | id |
-| workspace_id | workspace_id |
-| title | title |
-| content | content |
-| chapter | chapter |
-| order | order |
-| created_by | created_by (mapped) |
-| updated_by | updated_by (mapped) |
-| created_at | created_at |
-| updated_at | updated_at |
-
-### 5. research_tasks
-| Supabase | Firestore `research_tasks` |
-|----------|----------------------------|
-| id | id |
-| workspace_id | workspace_id |
-| title | title |
-| description | description |
-| assignee_id | assignee_id (mapped) |
-| assignee_name | assignee_name |
-| due_date | due_date |
-| priority | priority |
-| status | status |
-| created_by | created_by (mapped) |
-| created_at | created_at |
-| updated_at | updated_at |
-
-### 6. research_meetings
-| Supabase | Firestore `research_meetings` |
-|----------|------------------------------|
-| id | id |
-| workspace_id | workspace_id |
-| title | title |
-| date | date |
-| agenda | agenda |
-| notes | notes |
-| created_by | created_by (mapped) |
-| created_at | created_at |
-| updated_at | updated_at |
-
-### 7. research_messages
-| Supabase | Firestore `research_messages` |
-|----------|------------------------------|
-| id | id |
-| workspace_id | workspace_id |
-| sender_id | sender_id (mapped) |
-| sender_name | sender_name |
-| text | text |
-| topic | topic |
-| mentioned_user_ids | mentioned_user_ids (mapped) |
-| created_at | created_at |
-
-### 8. research_notifications
-| Supabase | Firestore `research_notifications` |
-|----------|-----------------------------------|
-| id | id |
-| workspace_id | workspace_id |
-| recipient_id | recipient_id (mapped) |
-| actor_id | actor_id (mapped) |
-| kind | kind |
-| content | content |
-| metadata | metadata |
-| created_at | created_at |
-| read_at | read_at |
-
-### 9. research_chapters
-| Supabase | Firestore `research_chapters` |
-|----------|------------------------------|
-| id | id |
-| workspace_id | workspace_id |
-| title | title |
-| chapter_order | chapter_order |
-| created_by | created_by (mapped) |
-| created_at | created_at |
-| updated_at | updated_at |
-
-### 10. research_member_profiles
-| Supabase | Firestore `research_member_profiles` |
-|----------|-------------------------------------|
-| id | id (workspace_id__user_id) |
-| workspace_id | workspace_id |
-| user_id | user_id (mapped) |
-| display_name | display_name |
-| avatar_url | avatar_url |
-| updated_at | updated_at |
-
-### 11. research_invitations
-| Supabase | Firestore `research_invitations` |
-|----------|---------------------------------|
-| id | id |
-| code | code |
-| workspace_id | workspace_id |
-| active | active |
-| created_by | created_by (mapped) |
-| created_at | created_at |
-| expires_at | expires_at |
-| workspace_title | workspace_title |
-
-### 12. research_presence
-| Supabase | Firestore `research_presence` |
-|----------|------------------------------|
-| id | id (workspace_id__user_id) |
-| workspace_id | workspace_id |
-| user_id | user_id (mapped) |
-| online | online |
-| updated_at | updated_at |
+### Key Mapping Rules
+- All `user_id` / `created_by` / `updated_by` / `sender_id` / `recipient_id` / `actor_id` / `assignee_id` / `mentioned_user_ids` → Map via email to Firebase UID
+- Preserve original Supabase UUID as `supabase_user_id` field in each document
+- Workspace IDs remain unchanged (they're not user-specific)
+- Document IDs for `research_members` and `research_member_profiles` use composite key: `workspace_id__user_id` (with mapped Firebase UID)
 
 ---
 
-## Migration Steps
+## Migration Steps Status
 
-### Phase 1: Export (Read-only)
-1. Run `export-supabase-data.js` with Supabase Service Role Key
-2. Verify export completeness
+### Phase 1: Export (Read-only) ✅ COMPLETED
+1. ✅ Run `export-supabase-data.js` with Supabase Service Role Key
+2. ✅ Verify export completeness
 
-### Phase 2: User Mapping
-1. Run `inventory-firebase-users.js` with Firebase Admin SDK
-2. Create email → Firebase UID mapping
-3. Match Supabase users to Firebase users by email
-4. Handle unmatched users (create in Firebase Auth or flag for manual review)
+### Phase 2: User Mapping ✅ COMPLETED
+1. ✅ Run `inventory-firebase-users.js --cli` (using authenticated Firebase CLI)
+2. ✅ Create email → Firebase UID mapping
+3. ✅ Match Supabase users to Firebase users by email
+4. ⚠️ Handle unmatched users (6 Supabase-only users need Firebase Auth accounts)
 
-### Phase 3: Data Transformation
-1. Transform each table using mapping above
-2. Replace Supabase user IDs with Firebase UIDs
-3. Add `supabase_*` fields for traceability
-4. Validate against Firestore rules
+### Phase 3: Data Transformation 🔄 READY TO START
+1. Build transformation scripts using user-mapping.json
+2. Transform each table using mapping above
+3. Replace Supabase user IDs with Firebase UIDs
+4. Add `supabase_*` fields for traceability
+5. Validate against Firestore rules
 
-### Phase 4: Import (Dry-run first)
-1. Test import to Firestore emulator
+### Phase 4: Import (Dry-run first) ⏳ PENDING
+1. Test import to Firestore emulator (requires Java)
 2. Verify rules pass
-3. Run against production (with approval)
+3. Run against production (with explicit approval)
 
 ---
 
-## Required Credentials
+## Required Credentials Status
 
-### Supabase
-- `SUPABASE_URL` = `https://ldsjdsgzqcawuhrnbvkq.supabase.co`
-- `SUPABASE_SERVICE_ROLE_KEY` = **Required** (Settings > API > service_role)
-
-### Firebase Admin
-- Service account JSON (Project Settings > Service Accounts > Generate Private Key)
-- Or `GOOGLE_APPLICATION_CREDENTIALS` pointing to key file
+| Credential | Status | Method |
+|------------|--------|--------|
+| Supabase Service Role Key | ✅ Provided | Used for export |
+| Firebase Admin SDK (service account) | ❌ Not needed | Using CLI auth:export instead |
+| Firebase CLI auth | ✅ Authenticated | Logged in as delapuertaroniel@gmail.com |
 
 ---
 
-## Blockers / Decisions Needed
+## Blockers / Decisions Needed Before Import
 
-1. **Supabase Service Role Key** - Required for export script
-2. **Firebase Service Account** - Required for Admin SDK scripts
-3. **Duplicate user handling** - What if email exists in both with different data?
-4. **Password migration** - Cannot migrate passwords; users must reset
-5. **Production import approval** - Explicit approval required before write
+1. **Duplicate user handling** - dummyac76y@gmail.com exists in both with different providers
+2. **Password migration** - Cannot migrate passwords; 6 Supabase-only users need Firebase Auth accounts created (will require password reset flow)
+3. **Production import approval** - Explicit approval required before write
+4. **Firestore emulator** - Requires Java installation for local testing
 
 ---
 
 ## Next Actions
-1. Obtain Supabase Service Role Key
-2. Create Firebase Service Account
-3. Run export script
-4. Run inventory script
-5. Build transformation scripts
-6. Test with Firestore emulator
-7. Request approval for production import
+
+1. **Resolve duplicate user strategy** for dummyac76y@gmail.com
+2. **Create Firebase Auth accounts** for 6 unmatched Supabase users (Admin SDK needed or manual)
+3. **Build data transformation scripts** using user-mapping.json
+4. **Install Java** for Firestore emulator testing (or skip to production with approval)
+5. **Request approval** for production import

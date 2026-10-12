@@ -1,0 +1,25 @@
+{
+  "users": [
+    {
+      "uid": "0gGPz7uNMdaXETwdl0JJIUagC0Y2",
+      "email": "dummyac76y@gmail.com",
+      "emailVerified": true,
+      "displayName": "dummy Account",
+      "photoURL": "https://lh3.googleusercontent.com/a/ACg8ocILEthSQ_J4zkMuMZyw077f6UFyFngAfaO4eR4m7xaLHRmZeQ=s96-c",
+      "metadata": {
+        "creationTime": "1791738777956",
+        "lastSignInTime": "1791738777956"
+      },
+      "providerData": [
+        {
+          "providerId": "google.com",
+          "uid": "117253419291768265370",
+          "email": "dummyac76y@gmail.com",
+          "displayName": "dummy Account",
+          "photoURL": "https://lh3.googleusercontent.com/a/ACg8ocILEthSQ_J4zkMuMZyw077f6UFyFngAfaO4eR4m7xaLHRmZeQ=s96-c"
+        }
+      ],
+      "customClaims": {}
+    }
+  ]
+}

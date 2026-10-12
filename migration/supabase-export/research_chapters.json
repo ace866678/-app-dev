@@ -1,0 +1,90 @@
+[
+  {
+    "id": "2feb99ef-a186-4ba5-a468-63b327a90115",
+    "workspace_id": "0d069b0f-abef-496e-95a4-5efd3192dbe2",
+    "title": "Chapter 1",
+    "chapter_order": 0,
+    "created_by": null,
+    "created_at": "2026-10-11T13:18:15.220506+00:00"
+  },
+  {
+    "id": "3ad8e845-396d-4b9d-9b7e-b1e906ab702d",
+    "workspace_id": "0d069b0f-abef-496e-95a4-5efd3192dbe2",
+    "title": "Chapter 2",
+    "chapter_order": 1,
+    "created_by": null,
+    "created_at": "2026-10-11T13:18:15.220506+00:00"
+  },
+  {
+    "id": "f67e21f1-d8b7-4d35-bfcc-5fb11fb78717",
+    "workspace_id": "0d069b0f-abef-496e-95a4-5efd3192dbe2",
+    "title": "Chapter 3",
+    "chapter_order": 2,
+    "created_by": null,
+    "created_at": "2026-10-11T13:18:15.220506+00:00"
+  },
+  {
+    "id": "2a9f19ce-27c1-4944-b987-e42bbea2ee20",
+    "workspace_id": "0d069b0f-abef-496e-95a4-5efd3192dbe2",
+    "title": "References",
+    "chapter_order": 3,
+    "created_by": null,
+    "created_at": "2026-10-11T13:18:15.220506+00:00"
+  },
+  {
+    "id": "b7ec3336-3a1d-451c-8e7c-9f6228227b9d",
+    "workspace_id": "769c2964-6202-460e-b111-36db0acd2116",
+    "title": "Chapter 1",
+    "chapter_order": 0,
+    "created_by": null,
+    "created_at": "2026-10-11T13:18:15.220506+00:00"
+  },
+  {
+    "id": "e2f21c48-6cce-4626-81ed-c8764c233680",
+    "workspace_id": "9e2f40a1-8a68-4dff-b0d6-7804f76da34e",
+    "title": "Chapter 1",
+    "chapter_order": 0,
+    "created_by": null,
+    "created_at": "2026-10-11T13:18:15.220506+00:00"
+  },
+  {
+    "id": "129610f5-84a2-4e55-a0a3-81ccd070b8a4",
+    "workspace_id": "9e2f40a1-8a68-4dff-b0d6-7804f76da34e",
+    "title": "Chapter 2",
+    "chapter_order": 1,
+    "created_by": null,
+    "created_at": "2026-10-11T13:18:15.220506+00:00"
+  },
+  {
+    "id": "b86938db-f454-4889-8914-fb8669012a7d",
+    "workspace_id": "9e2f40a1-8a68-4dff-b0d6-7804f76da34e",
+    "title": "Chapter 3",
+    "chapter_order": 2,
+    "created_by": null,
+    "created_at": "2026-10-11T13:18:15.220506+00:00"
+  },
+  {
+    "id": "c9073edd-aa05-46a4-9d66-9932e210e22e",
+    "workspace_id": "9e2f40a1-8a68-4dff-b0d6-7804f76da34e",
+    "title": "References",
+    "chapter_order": 3,
+    "created_by": null,
+    "created_at": "2026-10-11T13:18:15.220506+00:00"
+  },
+  {
+    "id": "faca0d76-310e-400f-8e67-97a4ec917752",
+    "workspace_id": "769c2964-6202-460e-b111-36db0acd2116",
+    "title": "General",
+    "chapter_order": 1,
+    "created_by": "e1522ad8-4d83-4c08-9b3a-1631741b3457",
+    "created_at": "2026-10-11T14:22:20.82829+00:00"
+  },
+  {
+    "id": "8a347300-1b25-425f-9085-6dae98534509",
+    "workspace_id": "0d069b0f-abef-496e-95a4-5efd3192dbe2",
+    "title": "General",
+    "chapter_order": 4,
+    "created_by": "e1522ad8-4d83-4c08-9b3a-1631741b3457",
+    "created_at": "2026-10-11T14:23:16.974967+00:00"
+  }
+]

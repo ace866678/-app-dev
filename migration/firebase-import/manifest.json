@@ -1,0 +1,43 @@
+{
+  "generatedAt": "2026-10-12T00:49:30.920Z",
+  "sourceExportDir": "./supabase-export",
+  "mappingFile": "./user-mapping.json",
+  "collections": {
+    "users": 7,
+    "research_workspaces": 3,
+    "research_members": 8,
+    "research_sections": 36,
+    "research_tasks": 1,
+    "research_meetings": 7,
+    "research_messages": 14,
+    "research_notifications": 25,
+    "research_chapters": 11,
+    "research_member_profiles": 2
+  },
+  "usersNeedingFirebaseAccounts": [
+    {
+      "email": "test@example.com",
+      "supabaseUserId": "23335bad-27fb-4a06-adeb-cdc50fda8de3"
+    },
+    {
+      "email": "nicojano200@gmail.com",
+      "supabaseUserId": "ef3cb0d3-874f-4f8a-88b7-a4d6677b8418"
+    },
+    {
+      "email": "am2801181@gmail.com",
+      "supabaseUserId": "df0a1c72-eeec-41fe-8b30-c99fb8c7a390"
+    },
+    {
+      "email": "freeupss@gmail.com",
+      "supabaseUserId": "afb76be7-0510-49dc-8d7f-f4e171d6ab7a"
+    },
+    {
+      "email": "rodriguezfroilan82@gmail.com",
+      "supabaseUserId": "5bf81aef-85ec-4951-bdcb-9dd1a2198eba"
+    },
+    {
+      "email": "delapuertaroniel@gmail.com",
+      "supabaseUserId": "e1522ad8-4d83-4c08-9b3a-1631741b3457"
+    }
+  ]
+}

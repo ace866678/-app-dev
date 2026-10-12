@@ -88,7 +88,13 @@ async function exportTable(table) {
       .select('*')
       .range(page * pageSize, (page + 1) * pageSize - 1);
     
-    if (error) throw error;
+    if (error) {
+      if (error.message.includes('Could not find the table') || error.message.includes('does not exist')) {
+        console.log(`  Table ${table} does not exist, skipping`);
+        return [];
+      }
+      throw error;
+    }
     if (!data || data.length === 0) break;
     
     allRows.push(...data);

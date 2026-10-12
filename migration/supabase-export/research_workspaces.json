@@ -1,0 +1,32 @@
+[
+  {
+    "id": "0d069b0f-abef-496e-95a4-5efd3192dbe2",
+    "title": "Research workspace",
+    "research_title": "asdsa",
+    "institution": "asdasd",
+    "program": "Bachelor of Science in Information Technology",
+    "join_code": "C8C494F2",
+    "created_by": "e1522ad8-4d83-4c08-9b3a-1631741b3457",
+    "created_at": "2026-10-10T13:40:25.428313+00:00"
+  },
+  {
+    "id": "9e2f40a1-8a68-4dff-b0d6-7804f76da34e",
+    "title": "Research workspace",
+    "research_title": "",
+    "institution": "",
+    "program": "Bachelor of Science in Information Technology",
+    "join_code": "7331B44A",
+    "created_by": "fac73b09-d431-44e2-bd7d-e4a1e53240b8",
+    "created_at": "2026-10-10T14:08:18.119685+00:00"
+  },
+  {
+    "id": "769c2964-6202-460e-b111-36db0acd2116",
+    "title": "PUV Guard",
+    "research_title": "IOT-BASED CRASH DETECTION AND EMERGENCY ALERT SYSTEM FOR MOTORCYCLE AND TRICYCLE DRIVERS IN KALIBO",
+    "institution": "STI COLLEGE KALIBO",
+    "program": "Bachelor of Science in Computer Engineering",
+    "join_code": "9B524BEF",
+    "created_by": "e1522ad8-4d83-4c08-9b3a-1631741b3457",
+    "created_at": "2026-10-10T14:40:08.73917+00:00"
+  }
+]
