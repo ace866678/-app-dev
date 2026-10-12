@@ -1,5 +1,5 @@
 import { BookOpen, MessageCircle, RefreshCw, Search, Send, Smile, AtSign, FileText, Terminal, ChevronRight } from 'lucide-react';
-import EmojiPicker from 'emoji-picker-react';
+import EmojiPicker, { EmojiStyle } from 'emoji-picker-react';
 import { useEffect, useState } from 'react';
 import { AvatarArt } from './ProfileAvatar';
 
@@ -214,7 +214,7 @@ export default function ResearchChat(p: Props) {
             </button>)}
             {!mentionCandidates.length && <p className="muted">No matching teammate. Try a different name.</p>}
           </div>}
-          {emojiOpen && <div className="chat-emoji-picker-shell"><EmojiPicker emojiStyle="native" width={320} height={340} lazyLoadEmojis previewConfig={{ showPreview: false }} onEmojiClick={emoji => { updateDraft(p.draft + emoji.emoji); setEmojiOpen(false); }} /></div>}
+          {emojiOpen && <div className="chat-emoji-picker-shell"><EmojiPicker emojiStyle={EmojiStyle.NATIVE} width={320} height={340} lazyLoadEmojis previewConfig={{ showPreview: false }} onEmojiClick={emoji => { updateDraft(p.draft + emoji.emoji); setEmojiOpen(false); }} /></div>}
           <textarea rows={3} maxLength={2200} value={p.draft} onChange={event => updateDraft(event.target.value)} placeholder="Write a message. Type @ to mention a teammate, or /help for commands…" aria-label="Message your research group" />
           <div className="chat-composer-footer"><small>{p.draft.length}/2200 characters · @mentions notify teammates · /help lists commands</small><button className="primary" type="submit" disabled={p.busy || !p.draft.trim()}><Send size={16} /> Send message</button></div>
         </form>

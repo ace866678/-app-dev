@@ -1,7 +1,7 @@
 import { Bell, BookOpen, CalendarDays, ListTodo, MessageCircle, Users, X, AtSign } from 'lucide-react';
 
 type Notice = {
-  id: string; workspaceId: string;
+  id: string; workspaceId: string; recipientId: string;
   kind: 'message' | 'meeting' | 'task' | 'ownership' | 'document' | 'mention';
   content: string; metadata: Record<string, any>; createdAt: string; readAt?: string | null;
 };
