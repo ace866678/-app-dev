@@ -242,6 +242,24 @@ small {
 .auth-form .secondary {
   margin-top: -3px;
 }
+.auth-reset {
+  justify-self: end;
+  border: 0;
+  padding: 0 2px;
+  background: transparent;
+  color: var(--purple);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+}
+.auth-reset:hover {
+  text-decoration: underline;
+}
+.auth-reset:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
 .auth-divider {
   display: flex;
   align-items: center;
@@ -2029,5 +2047,253 @@ button.primary,
   body::before {
     animation: none !important;
     transform: perspective(1350px) rotateX(10deg) scale(1.04) !important;
+  }
+}
+
+
+/* Light, solid, 95%-transparent interface finish.
+   The animated 3D wave stays on body::before; component surfaces do not use gradients. */
+:root {
+  --ink: #30334d;
+  --muted: #686e87;
+  --line: rgba(143, 146, 187, .22);
+  --purple: #746bd2;
+  --pale: rgba(245, 244, 255, .05);
+}
+body,
+#root {
+  color: #30334d;
+}
+.panel,
+.sidebar,
+.top,
+.auth,
+.auth-left,
+.auth-right,
+.auth-box,
+.modal,
+.chat-right-rail,
+.workspace-management,
+.workspace-empty-options .panel,
+.workspace-empty-brand,
+.dashboard-upcoming-meetings,
+.chat-header-prominent,
+.chat-panel,
+.chat-tools,
+.chat-composer,
+.chat-messages,
+.rail-section,
+.agenda-builder,
+.space-label,
+.workspace-action-modal,
+.workspace-card,
+.document-sidebar,
+.editor,
+.calendar-panel,
+.settings-panel,
+.meetings-workspace,
+.task-card,
+.dashboard-meeting-layout,
+.top-actions,
+.welcome header,
+.welcome-inner,
+.workspace-empty-content,
+.workspace-empty-options,
+.notifications-popover,
+.notifications-host .notifications-popover,
+.workspace-card-icon,
+.workspace-management-icon,
+.meeting-card,
+.calendar-day,
+.deadline-item,
+.deadline-card,
+.task-item,
+.topic-nav-item,
+.section-card,
+.stat-card,
+.dashboard-stat,
+.empty-state,
+.auth-form,
+.notification-row,
+.chat-message,
+.chat-bubble {
+  background: rgba(255, 255, 255, .05) !important;
+  background-image: none !important;
+  border-color: rgba(144, 143, 187, .22) !important;
+  box-shadow: 0 12px 34px rgba(72, 74, 120, .025) !important;
+  backdrop-filter: blur(24px) saturate(130%);
+  -webkit-backdrop-filter: blur(24px) saturate(130%);
+}
+.sidebar {
+  border-right: 1px solid rgba(144, 143, 187, .22) !important;
+}
+.top {
+  border-bottom: 1px solid rgba(144, 143, 187, .22) !important;
+}
+.workspace-empty-shell,
+.welcome,
+.auth {
+  background: transparent !important;
+  background-image: none !important;
+}
+.auth-left {
+  color: #30334d !important;
+}
+.auth-left h1,
+.auth-left h1 em,
+.auth-left p,
+.auth-left > small,
+.auth-box h2,
+.auth-box p,
+.auth-box > small,
+.auth-form label,
+.welcome-inner h1,
+.welcome-inner > p,
+.welcome-inner > small,
+.heading h1,
+.heading p,
+.heading small,
+.workspace-empty-brand h1,
+.workspace-empty-brand p,
+.workspace-empty-title h2,
+.workspace-empty-title p,
+.workspace-empty-brand small,
+.workspace-empty-title > small,
+.panel h3,
+.panel-head h3,
+.workspace-management-head h3,
+.workspace-action-row strong,
+.chat-room-title,
+.topic-nav-label,
+.rail-heading h3 {
+  color: #30334d !important;
+}
+.auth-left h1 em,
+.welcome-inner h1 em {
+  color: #766bd6 !important;
+}
+.auth-left > div:nth-child(2) > small,
+.welcome-inner > small,
+.heading small,
+.workspace-empty-brand small,
+.workspace-empty-title > small {
+  color: #7770be !important;
+}
+.panel p,
+.panel small,
+.panel label,
+.panel-head small,
+.muted,
+.workspace-empty-foot,
+.workspace-action-row small,
+.chat-header-text small,
+.chat-message p,
+.topic-rail-note {
+  color: #6d728a;
+}
+input,
+textarea,
+select,
+.panel input,
+.panel textarea,
+.panel select,
+.modal input,
+.auth-form input {
+  background: rgba(255, 255, 255, .05) !important;
+  background-image: none !important;
+  border: 1px solid rgba(132, 137, 177, .25) !important;
+  color: #30334d !important;
+  box-shadow: none !important;
+}
+input::placeholder,
+textarea::placeholder {
+  color: rgba(70, 76, 108, .55) !important;
+}
+button,
+.secondary,
+.notification-button,
+.close,
+.chat-right-rail .topic-nav-item,
+.sidebar nav button,
+.sidebar nav button.active,
+.chat-refresh-icon,
+.emoji-toggle,
+.icon-quiet,
+.workspace-delete-button,
+.workspace-leave-button,
+.topic-nav-item,
+.section-list button,
+.calendar-day,
+.task-card button {
+  background: rgba(255, 255, 255, .05) !important;
+  background-image: none !important;
+  color: #525774 !important;
+  border-color: rgba(144, 143, 187, .22) !important;
+  box-shadow: none !important;
+}
+button:hover,
+.secondary:hover,
+.sidebar nav button.active,
+.topic-nav-item.active,
+.chat-right-rail .topic-nav-item.active {
+  background: rgba(230, 228, 255, .06) !important;
+  background-image: none !important;
+}
+.primary,
+button.primary,
+.auth-box .primary,
+button.wide.primary {
+  background: rgba(132, 121, 224, .06) !important;
+  background-image: none !important;
+  color: #5e55bd !important;
+  border: 1px solid rgba(132, 121, 224, .30) !important;
+  box-shadow: none !important;
+}
+.red,
+.danger,
+.workspace-delete-button {
+  background: rgba(231, 130, 148, .05) !important;
+  background-image: none !important;
+  color: #ab4e64 !important;
+  border-color: rgba(209, 111, 132, .25) !important;
+}
+.mark,
+.pale,
+.workspace-card-icon,
+.workspace-management-icon,
+.workspace-confirm-icon,
+.notification-kind-icon,
+.topic-bullet,
+.topic-count,
+.meeting-date-chip,
+.deadline-date {
+  background: rgba(255, 255, 255, .05) !important;
+  background-image: none !important;
+  color: #6b64b9 !important;
+  border-color: rgba(144, 143, 187, .20) !important;
+}
+.chat-header-prominent,
+.workspace-empty-brand,
+.workspace-empty-options .panel,
+.chat-right-rail,
+.chat-right-rail .topic-nav-item,
+.agenda-builder,
+.space-label,
+.notifications-popover {
+  background: rgba(255, 255, 255, .05) !important;
+  background-image: none !important;
+}
+.notifications-popover {
+  border: 1px solid rgba(144, 143, 187, .26) !important;
+}
+hr,
+.divider,
+.panel-head,
+.rail-section + .rail-section {
+  border-color: rgba(144, 143, 187, .18) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    animation: none !important;
   }
 }

@@ -1,52 +1,51 @@
 # Research Room
 
-A collaborative thesis proposal workspace for student research teams.
-
-## Features
-- Supabase email/password sign-in and account registration
-- Create a research workspace or join with a private code
-- Edit and save thesis proposal sections
-- Create, assign, update, and delete tasks
-- Plan meetings and store shared notes
-- Group chat shared across workspace members
-- Manage thesis title, institution, and degree program
-
-## Architecture
-
-The frontend is React + Vite + TypeScript. Authentication and persistent data use the shared Supabase project `ldsjdsgzqcawuhrnbvkq` (currently named `puvguard`). AppDeploy and Vercel builds can use this same Supabase backend.
-
-The database contains `research_workspaces`, `research_members`, `research_sections`, `research_tasks`, `research_meetings`, and `research_messages`. Row Level Security is enabled on these tables. Workspace creation and joining use protected database RPC functions.
-
-Only the Supabase publishable key is used in the browser. Never add a Supabase secret/service-role key to frontend code or `VITE_*` environment variables.
+Research Room is a collaborative thesis-planning workspace built with React, TypeScript, Vite, Firebase Authentication, and Cloud Firestore.
 
 ## Local development
 
+Run these commands from this directory:
+
 ```bash
 npm install
+cp .env.example .env.local
 npm run dev
 ```
 
-Optional build-time environment variables:
+Set the Firebase **web app** configuration in `.env.local`:
 
-- `VITE_SUPABASE_URL=https://ldsjdsgzqcawuhrnbvkq.supabase.co`
-- `VITE_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key`
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_STORAGE_BUCKET`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`
+- `VITE_FIREBASE_APP_ID`
 
-The source includes public fallback values for the current Supabase project so the AppDeploy build and a default Vercel build can connect immediately. Environment variables override those values.
+These `VITE_*` values are browser configuration, not service-account credentials. Never put a service-account JSON, private key, or Admin SDK credential in browser code or a `VITE_*` variable.
 
-## Deploy on Vercel
+See [FIREBASE_SETUP.md](FIREBASE_SETUP.md) for Firebase Auth, Firestore, emulator, and deployment setup.
 
-1. Import GitHub repository [ace866678/-app-dev](https://github.com/ace866678/-app-dev).
-2. Set **Root Directory** to `research-room-app`.
-3. Use **Vite** with Build Command `npm run build` and Output Directory `dist`.
-4. Add the two optional environment variables above under Project Settings → Environment Variables, then redeploy.
-5. In Supabase Dashboard → Authentication → URL Configuration, add the AppDeploy origin `https://research-room-41f5cr.v2.appdeploy.ai` and the actual Vercel production URL to the allowed Redirect URLs. The app sends email-confirmation links back to the origin where account registration began.
+## Build and security-rule tests
 
-Both deployments then share accounts, workspaces, tasks, meetings, document sections, and chat data through the same Supabase project.
+```bash
+npm run build
+npx --yes firebase-tools@15.33.0 emulators:exec --only auth,firestore --project research-room-test "npm run test:rules"
+```
 
-## Live AppDeploy deployment
+The rules suite runs against local emulators and covers both allowed and denied access, including task-assignee workspace membership validation. It must not be pointed at production data.
 
-https://research-room-41f5cr.v2.appdeploy.ai/
+## Vercel
 
-## Important migration note
+Configure the Vercel project with **Root Directory** `research-room-app`, framework **Vite**, build command `npm run build`, and output directory `dist`. Configure the Firebase web-app values separately for Preview and Production only after confirming the intended Firebase project for each environment.
 
-This switch does not automatically copy any records that might have been stored in AppDeploy's original database. New records are stored in Supabase. Before submitting the thesis, verify required approval pages, signatures, CVs, school formatting, and reference style with the institution.
+## Production release gate
+
+Do not deploy Firestore rules or enable production Firebase traffic until all of the following are complete:
+
+1. Revoke any service-account keys reported as exposed in the earlier work, and verify they are no longer usable.
+2. Compare the candidate rules against the rules currently deployed in Firebase and approve the access model.
+3. Reconcile the earlier interrupted import read-only, and back up the relevant data before any retry.
+4. Run end-to-end Auth and Firestore checks against an isolated staging Firebase project.
+5. Confirm Production environment variables target the approved Firebase project.
+
+A passing frontend build or emulator test is not, by itself, evidence that production data is safe to migrate.
