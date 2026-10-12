@@ -1,0 +1,369 @@
+rules_version = '2';
+// Prototype rules. Test in the Emulator Suite and review before production deployment.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function workspacePath(wId) {
+      return /databases/$(database)/documents/research_workspaces/$(wId);
+    }
+    function memberPath(wId, uId) {
+      return /databases/$(database)/documents/research_members/$(wId + '__' + uId);
+    }
+    function invitePath(code) {
+      return /databases/$(database)/documents/research_invitations/$(code);
+    }
+    function hasMemberRole(wId, uId) {
+      let p = memberPath(wId, uId);
+      return exists(p) && get(p).data.role in ['owner', 'member'];
+    }
+    function isMember(wId) {
+      return signedIn() && hasMemberRole(wId, request.auth.uid);
+    }
+    function isOwner(wId) {
+      let p = memberPath(wId, request.auth.uid);
+      return signedIn() && exists(p) && get(p).data.role == 'owner';
+    }
+    function inviteIsActive(code, wId) {
+      let p = invitePath(code);
+      return code is string && exists(p)
+        && get(p).data.workspace_id == wId
+        && get(p).data.active == true
+        && (!('expires_at' in get(p).data)
+          || (get(p).data.expires_at is timestamp && get(p).data.expires_at > request.time));
+    }
+    function validMemberShape(data, memberId) {
+      return data.keys().hasAll(['id', 'workspace_id', 'user_id', 'role', 'joined_at'])
+        && data.keys().hasOnly(['id', 'workspace_id', 'user_id', 'role', 'joined_at', 'display_name', 'email', 'proof_code'])
+        && data.id == memberId
+        && data.workspace_id is string
+        && data.user_id is string
+        && data.role in ['owner', 'member']
+        && data.joined_at is string
+        && memberId == data.workspace_id + '__' + data.user_id;
+    }
+    function validInitialWorkspace(wId, data) {
+      let m = memberPath(wId, request.auth.uid);
+      let i = invitePath(data.join_code);
+      return !exists(workspacePath(wId))
+        && data.id == wId
+        && data.owner_id == request.auth.uid
+        && data.join_code is string
+        && data.join_code.size() >= 8
+        && data.join_code.size() <= 16
+        && existsAfter(m)
+        && getAfter(m).data.user_id == request.auth.uid
+        && getAfter(m).data.workspace_id == wId
+        && getAfter(m).data.role == 'owner'
+        && existsAfter(i)
+        && getAfter(i).data.workspace_id == wId
+        && getAfter(i).data.code == data.join_code
+        && getAfter(i).data.active == true
+        && getAfter(i).data.created_by == request.auth.uid;
+    }
+    function validOwnerTransfer(wId) {
+      let oldOwner = memberPath(wId, request.auth.uid);
+      let newOwner = memberPath(wId, request.resource.data.owner_id);
+      return resource.data.owner_id == request.auth.uid
+        && request.resource.data.owner_id is string
+        && request.resource.data.owner_id != resource.data.owner_id
+        && existsAfter(oldOwner)
+        && getAfter(oldOwner).data.role == 'member'
+        && existsAfter(newOwner)
+        && getAfter(newOwner).data.role == 'owner'
+        && getAfter(newOwner).data.user_id == request.resource.data.owner_id;
+    }
+    function validInviteCreate(data, code) {
+      let w = workspacePath(data.workspace_id);
+      let m = memberPath(data.workspace_id, request.auth.uid);
+      return signedIn()
+        && data.keys().hasAll(['id', 'code', 'workspace_id', 'active', 'created_by', 'created_at'])
+        && data.keys().hasOnly(['id', 'code', 'workspace_id', 'active', 'created_by', 'created_at', 'expires_at', 'workspace_title'])
+        && data.id == code && data.code == code
+        && data.active == true && data.created_by == request.auth.uid
+        && data.workspace_id is string
+        && (
+          isOwner(data.workspace_id)
+          || (!exists(w)
+            && getAfter(w).data.owner_id == request.auth.uid
+            && existsAfter(m)
+            && getAfter(m).data.role == 'owner')
+        );
+    }
+
+    match /users/{uid} {
+      allow get, create, update, delete: if signedIn() && request.auth.uid == uid;
+      allow list: if false;
+    }
+    match /publicProfiles/{uid} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['uid', 'display_name', 'photo_url', 'updated_at'])
+        && request.resource.data.uid == uid
+        && request.resource.data.display_name is string
+        && request.resource.data.photo_url is string;
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /research_workspaces/{wId} {
+      allow get: if isMember(wId);
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasAll(['id', 'title', 'research_title', 'institution', 'program', 'owner_id', 'join_code', 'created_at', 'updated_at'])
+        && request.resource.data.keys().hasOnly(['id', 'title', 'research_title', 'institution', 'program', 'owner_id', 'join_code', 'created_at', 'updated_at'])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 160
+        && request.resource.data.research_title is string
+        && request.resource.data.institution is string
+        && request.resource.data.program is string
+        && request.resource.data.created_at is string
+        && request.resource.data.updated_at is string
+        && validInitialWorkspace(wId, request.resource.data);
+      allow update: if isOwner(wId)
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.created_at == resource.data.created_at
+        && request.resource.data.join_code == resource.data.join_code
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'research_title', 'institution', 'program', 'updated_at', 'owner_id'])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 160
+        && request.resource.data.research_title is string
+        && request.resource.data.institution is string
+        && request.resource.data.program is string
+        && request.resource.data.updated_at is string
+        && (request.resource.data.owner_id == resource.data.owner_id || validOwnerTransfer(wId));
+      allow delete: if isOwner(wId);
+    }
+
+    match /research_members/{memberId} {
+      allow get: if signedIn()
+        && (memberId.matches('^.{1,200}__' + request.auth.uid + '$')
+          || resource.data.user_id == request.auth.uid
+          || isMember(resource.data.workspace_id));
+      allow list: if signedIn()
+        && (resource.data.user_id == request.auth.uid || isMember(resource.data.workspace_id));
+      allow create: if signedIn()
+        && validMemberShape(request.resource.data, memberId)
+        && (
+          (!exists(workspacePath(request.resource.data.workspace_id))
+            && request.resource.data.user_id == request.auth.uid
+            && request.resource.data.role == 'owner'
+            && getAfter(workspacePath(request.resource.data.workspace_id)).data.owner_id == request.auth.uid)
+          || (isOwner(request.resource.data.workspace_id)
+            && request.resource.data.user_id != request.auth.uid
+            && request.resource.data.role == 'member')
+          || (request.resource.data.user_id == request.auth.uid
+            && request.resource.data.role == 'member'
+            && ('proof_code' in request.resource.data)
+            && inviteIsActive(request.resource.data.proof_code, request.resource.data.workspace_id))
+        );
+      allow update: if isOwner(resource.data.workspace_id)
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.workspace_id == resource.data.workspace_id
+        && request.resource.data.user_id == resource.data.user_id
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role'])
+        && (
+          request.resource.data.role == resource.data.role
+          || (resource.data.role == 'member'
+            && request.resource.data.role == 'owner'
+            && getAfter(workspacePath(resource.data.workspace_id)).data.owner_id == resource.data.user_id)
+          || (resource.data.role == 'owner'
+            && request.resource.data.role == 'member'
+            && getAfter(workspacePath(resource.data.workspace_id)).data.owner_id != resource.data.user_id)
+        );
+      allow delete: if signedIn() && resource.data.role == 'member'
+        && (isOwner(resource.data.workspace_id) || request.auth.uid == resource.data.user_id)
+        || signedIn() && resource.data.role == 'owner'
+          && request.auth.uid == resource.data.user_id
+          && !existsAfter(workspacePath(resource.data.workspace_id));
+    }
+
+    match /research_invitations/{code} {
+      allow get: if signedIn();
+      allow list: if signedIn() && isOwner(resource.data.workspace_id);
+      allow create: if validInviteCreate(request.resource.data, code);
+      allow update: if isOwner(resource.data.workspace_id)
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.code == resource.data.code
+        && request.resource.data.workspace_id == resource.data.workspace_id
+        && request.resource.data.created_by == resource.data.created_by
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active', 'expires_at']);
+      allow delete: if isOwner(resource.data.workspace_id);
+    }
+
+    match /research_member_profiles/{profileId} {
+      allow get, list: if isMember(resource.data.workspace_id);
+      allow create, update: if signedIn()
+        && request.resource.data.user_id == request.auth.uid
+        && isMember(request.resource.data.workspace_id)
+        && request.resource.data.keys().hasAll(['id', 'workspace_id', 'user_id', 'display_name', 'avatar_url'])
+        && request.resource.data.keys().hasOnly(['id', 'workspace_id', 'user_id', 'display_name', 'avatar_url', 'updated_at'])
+        && profileId == request.resource.data.workspace_id + '__' + request.resource.data.user_id
+        && request.resource.data.display_name is string
+        && request.resource.data.display_name.size() <= 120
+        && request.resource.data.avatar_url is string;
+      allow delete: if isMember(resource.data.workspace_id)
+        && (resource.data.user_id == request.auth.uid || isOwner(resource.data.workspace_id));
+    }
+
+    match /research_chapters/{chapterId} {
+      allow get, list: if isMember(resource.data.workspace_id);
+      allow create: if isMember(request.resource.data.workspace_id)
+        && request.resource.data.keys().hasAll(['id', 'workspace_id', 'title', 'chapter_order', 'created_by', 'created_at'])
+        && request.resource.data.keys().hasOnly(['id', 'workspace_id', 'title', 'chapter_order', 'created_by', 'created_at', 'updated_at'])
+        && request.resource.data.created_by == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 160
+        && request.resource.data.chapter_order is number;
+      allow update: if isMember(resource.data.workspace_id)
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.workspace_id == resource.data.workspace_id
+        && request.resource.data.created_by == resource.data.created_by
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'chapter_order', 'updated_at'])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 160;
+      allow delete: if isOwner(resource.data.workspace_id);
+    }
+
+    match /research_sections/{sectionId} {
+      allow get, list: if isMember(resource.data.workspace_id);
+      allow create: if isMember(request.resource.data.workspace_id)
+        && request.resource.data.keys().hasAll(['id', 'workspace_id', 'title', 'content', 'chapter', 'order', 'created_by', 'updated_by', 'created_at', 'updated_at'])
+        && request.resource.data.keys().hasOnly(['id', 'workspace_id', 'title', 'content', 'chapter', 'order', 'created_by', 'updated_by', 'created_at', 'updated_at'])
+        && request.resource.data.created_by == request.auth.uid
+        && request.resource.data.updated_by == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.title.size() <= 240
+        && request.resource.data.content is string
+        && request.resource.data.content.size() <= 900000
+        && request.resource.data.chapter is string
+        && request.resource.data.order is number;
+      allow update: if isMember(resource.data.workspace_id)
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.workspace_id == resource.data.workspace_id
+        && request.resource.data.created_by == resource.data.created_by
+        && request.resource.data.updated_by == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'content', 'chapter', 'order', 'updated_by', 'updated_at'])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() <= 240
+        && request.resource.data.content is string
+        && request.resource.data.content.size() <= 900000
+        && request.resource.data.chapter is string
+        && request.resource.data.order is number;
+      allow delete: if isMember(resource.data.workspace_id);
+    }
+
+    match /research_tasks/{taskId} {
+      allow get, list: if isMember(resource.data.workspace_id);
+      allow create: if isMember(request.resource.data.workspace_id)
+        && request.resource.data.keys().hasAll(['id', 'workspace_id', 'title', 'description', 'assignee_id', 'assignee_name', 'due_date', 'priority', 'status', 'created_by', 'created_at', 'updated_at'])
+        && request.resource.data.keys().hasOnly(['id', 'workspace_id', 'title', 'description', 'assignee_id', 'assignee_name', 'due_date', 'priority', 'status', 'created_by', 'created_at', 'updated_at'])
+        && request.resource.data.created_by == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 240
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 12000
+        && request.resource.data.priority in ['Low', 'Medium', 'High', 'Urgent']
+        && request.resource.data.status in ['To do', 'In progress', 'Done'];
+      allow update: if isMember(resource.data.workspace_id)
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.workspace_id == resource.data.workspace_id
+        && request.resource.data.created_by == resource.data.created_by
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'description', 'assignee_id', 'assignee_name', 'due_date', 'priority', 'status', 'updated_at'])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 240
+        && request.resource.data.priority in ['Low', 'Medium', 'High', 'Urgent']
+        && request.resource.data.status in ['To do', 'In progress', 'Done'];
+      allow delete: if isMember(resource.data.workspace_id);
+    }
+
+    match /research_meetings/{meetingId} {
+      allow get, list: if isMember(resource.data.workspace_id);
+      allow create: if isOwner(request.resource.data.workspace_id)
+        && request.resource.data.keys().hasAll(['id', 'workspace_id', 'title', 'date', 'agenda', 'notes', 'created_by', 'created_at', 'updated_at'])
+        && request.resource.data.keys().hasOnly(['id', 'workspace_id', 'title', 'date', 'agenda', 'notes', 'created_by', 'created_at', 'updated_at'])
+        && request.resource.data.created_by == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 200
+        && request.resource.data.date is string
+        && request.resource.data.agenda is list
+        && request.resource.data.agenda.size() <= 50
+        && request.resource.data.notes is string
+        && request.resource.data.notes.size() <= 30000;
+      allow update: if isOwner(resource.data.workspace_id)
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.workspace_id == resource.data.workspace_id
+        && request.resource.data.created_by == resource.data.created_by
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'date', 'agenda', 'notes', 'updated_at'])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.agenda is list
+        && request.resource.data.agenda.size() <= 50
+        && request.resource.data.notes is string
+        && request.resource.data.notes.size() <= 30000;
+      allow delete: if isOwner(resource.data.workspace_id);
+    }
+
+    match /research_messages/{messageId} {
+      allow get, list: if isMember(resource.data.workspace_id);
+      allow create: if isMember(request.resource.data.workspace_id)
+        && request.resource.data.keys().hasAll(['id', 'workspace_id', 'sender_id', 'sender_name', 'text', 'topic', 'mentioned_user_ids', 'created_at'])
+        && request.resource.data.keys().hasOnly(['id', 'workspace_id', 'sender_id', 'sender_name', 'text', 'topic', 'mentioned_user_ids', 'created_at'])
+        && request.resource.data.sender_id == request.auth.uid
+        && request.resource.data.sender_name is string
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 12000
+        && request.resource.data.topic is string
+        && request.resource.data.topic.size() <= 100
+        && request.resource.data.mentioned_user_ids is list
+        && request.resource.data.mentioned_user_ids.size() <= 100;
+      allow update: if false;
+      allow delete: if isOwner(resource.data.workspace_id);
+    }
+
+    match /research_notifications/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.recipient_id == request.auth.uid || isOwner(resource.data.workspace_id));
+      allow create: if isMember(request.resource.data.workspace_id)
+        && request.resource.data.keys().hasAll(['id', 'workspace_id', 'recipient_id', 'actor_id', 'kind', 'content', 'metadata', 'created_at', 'read_at'])
+        && request.resource.data.keys().hasOnly(['id', 'workspace_id', 'recipient_id', 'actor_id', 'kind', 'content', 'metadata', 'created_at', 'read_at'])
+        && request.resource.data.actor_id == request.auth.uid
+        && hasMemberRole(request.resource.data.workspace_id, request.resource.data.recipient_id)
+        && request.resource.data.kind in ['message', 'meeting', 'task', 'ownership', 'document', 'mention']
+        && request.resource.data.content is string
+        && request.resource.data.content.size() <= 300
+        && request.resource.data.metadata is map;
+      allow update: if signedIn()
+        && resource.data.recipient_id == request.auth.uid
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.workspace_id == resource.data.workspace_id
+        && request.resource.data.recipient_id == resource.data.recipient_id
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read_at'])
+        && (request.resource.data.read_at == null || request.resource.data.read_at is string);
+      allow delete: if signedIn()
+        && (resource.data.recipient_id == request.auth.uid || isOwner(resource.data.workspace_id));
+    }
+
+    match /research_presence/{presenceId} {
+      allow get, list: if isMember(resource.data.workspace_id);
+      allow create, update: if signedIn()
+        && request.resource.data.user_id == request.auth.uid
+        && request.resource.data.id == presenceId
+        && presenceId == request.resource.data.workspace_id + '__' + request.auth.uid
+        && isMember(request.resource.data.workspace_id)
+        && request.resource.data.online is bool
+        && request.resource.data.updated_at is string;
+      allow delete: if signedIn()
+        && (resource.data.user_id == request.auth.uid || isOwner(resource.data.workspace_id));
+    }
+
+    // All paths and operations not declared above are denied by default.
+  }
+}
