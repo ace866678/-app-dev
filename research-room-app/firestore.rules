@@ -16,6 +16,9 @@ service cloud.firestore {
       let p = memberPath(wId, uId);
       return exists(p) && get(p).data.role in ['owner', 'member'];
     }
+    function isValidAssignee(wId, assigneeId) {
+      return assigneeId == null || assigneeId == '' || hasMemberRole(wId, assigneeId);
+    }
     function isMember(wId) {
       return signedIn() && hasMemberRole(wId, request.auth.uid);
     }
@@ -268,7 +271,8 @@ service cloud.firestore {
         && request.resource.data.description is string
         && request.resource.data.description.size() <= 12000
         && request.resource.data.priority in ['Low', 'Medium', 'High', 'Urgent']
-        && request.resource.data.status in ['To do', 'In progress', 'Done'];
+        && request.resource.data.status in ['To do', 'In progress', 'Done']
+        && isValidAssignee(request.resource.data.workspace_id, request.resource.data.assignee_id);
       allow update: if isMember(resource.data.workspace_id)
         && request.resource.data.id == resource.data.id
         && request.resource.data.workspace_id == resource.data.workspace_id
@@ -278,7 +282,8 @@ service cloud.firestore {
         && request.resource.data.title.size() > 0
         && request.resource.data.title.size() <= 240
         && request.resource.data.priority in ['Low', 'Medium', 'High', 'Urgent']
-        && request.resource.data.status in ['To do', 'In progress', 'Done'];
+        && request.resource.data.status in ['To do', 'In progress', 'Done']
+        && isValidAssignee(resource.data.workspace_id, request.resource.data.assignee_id);
       allow delete: if isMember(resource.data.workspace_id);
     }
 
