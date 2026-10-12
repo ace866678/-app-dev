@@ -1,0 +1,42 @@
+name: Migration preflight (no production writes)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "migration/**"
+      - ".github/workflows/migration-preflight.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migration-preflight-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-preflight:
+    name: Static checks only
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Check migration script syntax
+        working-directory: migration
+        run: |
+          node --check export-supabase-data.js
+          node --check inventory-firebase-users.js
+          node --check transform-data.js
+          node --check preflight-check.js
+
+      - name: Check repository hygiene
+        run: node migration/preflight-check.js
