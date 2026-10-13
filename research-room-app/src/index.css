@@ -2512,3 +2512,200 @@ hr,
   flex: 1 1 auto;
   white-space: nowrap;
 }
+
+
+/* ==========================================================================
+   Unified design tokens + solid white surfaces (final override)
+   - The animated pastel page background (body::before) is unchanged.
+   - Cards, panels, popovers, inputs and buttons are solid white.
+   - One violet palette is used for brand colour everywhere.
+   ========================================================================== */
+:root {
+  --brand-50: #f3f1ff;
+  --brand-100: #e8e5ff;
+  --brand-200: #d6d1f7;
+  --brand-300: #b9b0f2;
+  --brand-500: #6558d9;
+  --brand-600: #5447c8;
+  --brand-700: #43389f;
+  --surface: #ffffff;
+  --surface-border: #e4e6f0;
+  --surface-shadow: 0 10px 30px rgba(52, 48, 110, .08);
+  --purple: var(--brand-500);
+  --pale: var(--brand-50);
+  --line: #e9ebf3;
+}
+body .panel,
+body .sidebar,
+body .top,
+body .auth-box,
+body .modal,
+body .chat-right-rail,
+body .workspace-management,
+body .workspace-empty-options .panel,
+body .workspace-empty-brand,
+body .dashboard-upcoming-meetings,
+body .chat-header-prominent,
+body .chat-panel,
+body .chat-tools,
+body .chat-composer,
+body .chat-messages,
+body .rail-section,
+body .agenda-builder,
+body .space-label,
+body .workspace-action-modal,
+body .workspace-card,
+body .document-sidebar,
+body .editor,
+body .calendar-panel,
+body .settings-panel,
+body .meetings-workspace,
+body .task-card,
+body .dashboard-meeting-layout,
+body .top-actions,
+body .welcome header,
+body .welcome-inner,
+body .workspace-empty-content,
+body .workspace-empty-options,
+body .notifications-popover,
+body .meeting-card,
+body .calendar-day,
+body .deadline-item,
+body .deadline-card,
+body .task-item,
+body .topic-nav-item,
+body .section-card,
+body .stat-card,
+body .dashboard-stat,
+body .empty-state,
+body .auth-form,
+body .chat-message,
+body .chat-bubble {
+  background: var(--surface) !important;
+  background-image: none !important;
+  border-color: var(--surface-border) !important;
+  box-shadow: var(--surface-shadow) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+/* Layout wrappers stay transparent so the animated background shows around cards. */
+body .auth, body .auth-right, body .welcome, body .workspace-empty-shell {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+/* Nested blocks inside a white card should not add extra shadows. */
+body .panel .panel, body .rail-section, body .chat-messages, body .chat-tools,
+body .topic-nav-item, body .notification-row, body .task-item, body .deadline-item {
+  box-shadow: none !important;
+}
+body .panel input, body .panel textarea, body .panel select, body .modal input,
+body .auth-form input, body input, body textarea, body select {
+  background: #fff !important;
+  border-color: #d9dbe8 !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+body input:focus-visible, body textarea:focus-visible, body select:focus-visible {
+  border-color: var(--brand-500) !important;
+  box-shadow: 0 0 0 3px rgba(101, 88, 217, .18) !important;
+  outline: none !important;
+}
+body .secondary, body .notification-button, body .close, body .icon-quiet,
+body .emoji-toggle, body .chat-refresh-icon {
+  background: #fff !important;
+  border-color: var(--surface-border) !important;
+  color: #4a4f6a !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+body .secondary:hover, body .notification-button:hover, body .close:hover {
+  background: var(--brand-50) !important;
+  border-color: var(--brand-200) !important;
+}
+/* Primary buttons: one solid violet with white text (were 5% tinted). */
+body .primary, body button.primary, body .auth-box .primary, body button.wide.primary {
+  background: var(--brand-500) !important;
+  background-image: none !important;
+  color: #fff !important;
+  border: 1px solid var(--brand-500) !important;
+  box-shadow: 0 6px 16px rgba(101, 88, 217, .24) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+body .primary:hover, body button.primary:hover, body .auth-box .primary:hover {
+  background: var(--brand-600) !important;
+  border-color: var(--brand-600) !important;
+}
+body .primary:disabled, body button.primary:disabled {
+  background: var(--brand-300) !important;
+  border-color: var(--brand-300) !important;
+  box-shadow: none !important;
+  cursor: wait;
+}
+/* Active nav items and small violet chips share the same tint. */
+body .sidebar nav button.active, body .topic-nav-item.active {
+  background: var(--brand-50) !important;
+  border-color: var(--brand-200) !important;
+  color: var(--brand-700) !important;
+}
+body .mark, body .pale, body .topic-bullet, body .topic-count, body .meeting-date-chip,
+body .deadline-date, body .notification-kind-icon, body .workspace-card-icon,
+body .workspace-management-icon, body .workspace-confirm-icon {
+  background: var(--brand-50) !important;
+  border-color: var(--brand-100) !important;
+  color: var(--brand-500) !important;
+}
+body .notification-row.unread { background: var(--brand-50) !important; }
+body .notifications-host .notifications-popover { background: #fff !important; }
+
+/* ---- Sign-in page: one violet family ---- */
+body .auth-left {
+  background: linear-gradient(150deg, var(--brand-700) 0%, var(--brand-500) 100%) !important;
+  border-right: 0 !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+body .auth-left > div:nth-child(2) > small { color: var(--brand-100) !important; }
+body .auth-left h1 em { color: var(--brand-200) !important; }
+body .auth-left .brand .mark {
+  background: rgba(255, 255, 255, .16) !important;
+  border-color: rgba(255, 255, 255, .28) !important;
+  color: #fff !important;
+}
+body .auth-box { border-radius: 22px; }
+body .auth-box h2 { color: var(--ink) !important; }
+body .auth-reset, body .auth-box .auth-switch, body .auth-form .link { color: var(--brand-500) !important; }
+body .auth-box .google-auth {
+  background: #fff !important;
+  border: 1px solid var(--surface-border) !important;
+  color: #303047 !important;
+  box-shadow: none !important;
+}
+body .auth-box .google-auth:hover {
+  border-color: var(--brand-300) !important;
+  background: var(--brand-50) !important;
+}
+body .auth-form input:focus-visible {
+  border-color: var(--brand-500) !important;
+  box-shadow: 0 0 0 3px rgba(101, 88, 217, .18) !important;
+}
+body .auth-box button:focus-visible, body .top .top-signout:focus-visible {
+  outline: 3px solid var(--brand-300) !important;
+  outline-offset: 3px !important;
+}
+body .top .top-signout {
+  background: #fff !important;
+  color: var(--brand-700) !important;
+  border: 1px solid var(--brand-200) !important;
+}
+body .top .top-signout:hover {
+  background: var(--brand-50) !important;
+  border-color: var(--brand-300) !important;
+}
+body .auth-form {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
