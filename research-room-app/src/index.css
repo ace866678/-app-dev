@@ -1496,7 +1496,7 @@ body::after {
 }
 body::before {
   background:
-    radial-gradient(620px circle at var(--ambient-x) var(--ambient-y), rgba(101, 88, 217, .24), transparent 66%),
+    radial-gradient(620px circle at var(--ambient-x) var(--ambient-y), rgba(116, 104, 230, .26), transparent 66%),
     radial-gradient(900px ellipse at 14% 10%, rgba(30, 160, 184, .12), transparent 62%),
     radial-gradient(850px ellipse at 84% 88%, rgba(108, 52, 188, .15), transparent 61%);
   transform: translate3d(0, 0, 0);
@@ -1607,7 +1607,7 @@ body::after {
 @media (max-width: 700px) {
   body::before {
     background:
-      radial-gradient(440px circle at var(--ambient-x) var(--ambient-y), rgba(101, 88, 217, .18), transparent 68%),
+      radial-gradient(440px circle at var(--ambient-x) var(--ambient-y), rgba(116, 104, 230, .20), transparent 68%),
       radial-gradient(600px ellipse at 14% 10%, rgba(30, 160, 184, .08), transparent 62%),
       radial-gradient(650px ellipse at 84% 88%, rgba(108, 52, 188, .1), transparent 61%);
   }
@@ -2024,7 +2024,7 @@ button.primary,
 }
 .mark {
   background: rgba(101, 88, 217, .05) !important;
-  border: 1px solid rgba(101, 88, 217, .24) !important;
+  border: 1px solid rgba(116, 104, 230, .26) !important;
   color: #6558d9 !important;
 }
 .chat-right-rail,
@@ -2525,9 +2525,10 @@ hr,
   --brand-100: #e8e5ff;
   --brand-200: #d6d1f7;
   --brand-300: #b9b0f2;
-  --brand-500: #6558d9;
-  --brand-600: #5447c8;
-  --brand-700: #43389f;
+  --brand-400: #9186f2;
+  --brand-500: #7468e6;
+  --brand-600: #675bdb;
+  --brand-700: #5a4fcf;
   --surface: #ffffff;
   --surface-border: #e4e6f0;
   --surface-shadow: 0 10px 30px rgba(52, 48, 110, .08);
@@ -2608,7 +2609,7 @@ body .auth-form input, body input, body textarea, body select {
 }
 body input:focus-visible, body textarea:focus-visible, body select:focus-visible {
   border-color: var(--brand-500) !important;
-  box-shadow: 0 0 0 3px rgba(101, 88, 217, .18) !important;
+  box-shadow: 0 0 0 3px rgba(116, 104, 230, .20) !important;
   outline: none !important;
 }
 body .secondary, body .notification-button, body .close, body .icon-quiet,
@@ -2629,7 +2630,7 @@ body .primary, body button.primary, body .auth-box .primary, body button.wide.pr
   background-image: none !important;
   color: #fff !important;
   border: 1px solid var(--brand-500) !important;
-  box-shadow: 0 6px 16px rgba(101, 88, 217, .24) !important;
+  box-shadow: 0 6px 16px rgba(116, 104, 230, .26) !important;
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
 }
@@ -2661,14 +2662,15 @@ body .notifications-host .notifications-popover { background: #fff !important; }
 
 /* ---- Sign-in page: one violet family ---- */
 body .auth-left {
-  background: linear-gradient(150deg, var(--brand-700) 0%, var(--brand-500) 100%) !important;
+  background: linear-gradient(150deg, var(--brand-400) 0%, var(--brand-500) 100%) !important;
   border-right: 0 !important;
   box-shadow: none !important;
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
 }
 body .auth-left > div:nth-child(2) > small { color: var(--brand-100) !important; }
-body .auth-left h1 em { color: var(--brand-200) !important; }
+body .auth-left h1 em { color: #ece9ff !important; }
+body .auth-left p, body .auth-left > small { color: rgba(255,255,255,.92) !important; }
 body .auth-left .brand .mark {
   background: rgba(255, 255, 255, .16) !important;
   border-color: rgba(255, 255, 255, .28) !important;
@@ -2689,7 +2691,7 @@ body .auth-box .google-auth:hover {
 }
 body .auth-form input:focus-visible {
   border-color: var(--brand-500) !important;
-  box-shadow: 0 0 0 3px rgba(101, 88, 217, .18) !important;
+  box-shadow: 0 0 0 3px rgba(116, 104, 230, .20) !important;
 }
 body .auth-box button:focus-visible, body .top .top-signout:focus-visible {
   outline: 3px solid var(--brand-300) !important;
