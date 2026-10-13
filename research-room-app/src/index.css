@@ -2525,7 +2525,7 @@ hr,
   --brand-100: #e8e5ff;
   --brand-200: #d6d1f7;
   --brand-300: #b9b0f2;
-  --brand-dark: #4a3ba8;
+  --brand-dark: #3d2f94;
   --brand-400: #9186f2;
   --brand-500: #7468e6;
   --brand-600: #675bdb;
@@ -2671,7 +2671,7 @@ body .auth-left {
   backdrop-filter: none !important;
 }
 body .auth-left > div:nth-child(2) > small { color: #cfc8ff !important; }
-body .auth-left h1 em { color: #cfc8ff !important; }
+body .auth-left h1 em { color: #a99cff !important; }
 body .auth-left p { color: rgba(255,255,255,.88) !important; }
 body .auth-left > small { color: rgba(255,255,255,.72) !important; }
 body .auth-left .brand .mark {
