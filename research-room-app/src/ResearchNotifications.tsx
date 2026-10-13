@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Bell, BookOpen, CalendarDays, ListTodo, MessageCircle, Users, X, AtSign } from 'lucide-react';
 
 type Notice = {
@@ -30,9 +31,21 @@ const iconFor = (kind: Notice['kind']) => {
   return <Users size={14} />;
 };
 export default function ResearchNotifications(p: Props) {
+  // Close the panel with Escape or by clicking anywhere outside it.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') p.onClose(); };
+    const onPointer = (event: MouseEvent) => {
+      const host = (event.target as HTMLElement | null)?.closest('.notifications-host');
+      const isOpen = !!document.querySelector('.notifications-host.open');
+      if (isOpen && !host) p.onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onPointer);
+    return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('mousedown', onPointer); };
+  }, [p.onClose]);
   return <>
-    <button type="button" className="notification-button" aria-label="Open notifications" onClick={p.onToggle}><Bell size={16} /><span>Notifications</span>{p.unread > 0 && <b>{p.unread > 99 ? '99+' : p.unread}</b>}</button>
-    <div className="notifications-popover">
+    <button type="button" className="notification-button" aria-label={p.unread > 0 ? 'Notifications, ' + p.unread + ' unread' : 'Notifications'} aria-haspopup="true" onClick={p.onToggle}><Bell size={16} /><span>Notifications</span>{p.unread > 0 && <b>{p.unread > 99 ? '99+' : p.unread}</b>}</button>
+    <div className="notifications-popover" role="region" aria-label="Notifications">
       <div className="panel-head"><div><h3>Notifications</h3><small>{p.unread} unread</small></div><button type="button" className="icon-quiet" aria-label="Close notifications" onClick={p.onClose}><X size={14} /></button></div>
       {p.notifications.slice(0, 10).map(notice => <button type="button" key={notice.id} className={'notification-row' + (!notice.readAt ? ' unread' : '')} onClick={() => p.open(notice)}>
         <span className={'notification-kind-icon ' + notice.kind}>{iconFor(notice.kind)}</span>

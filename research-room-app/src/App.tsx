@@ -833,7 +833,9 @@ function App() {
       await fn();
       if (ok) MSG(ok);
     } catch (e) {
-      E(e instanceof Error ? e.message : 'Something went wrong.');
+      // Backend errors are often plain { message } objects rather than Error instances.
+      const text = e instanceof Error ? e.message : typeof (e as { message?: unknown })?.message === 'string' ? (e as { message: string }).message : '';
+      E(text || 'Something went wrong. Please try again.');
     } finally {
       B(false);
     }
@@ -1268,10 +1270,11 @@ function App() {
             <span className="mark">
               <BookOpen />
             </span>
-            <h2>Welcome to your research room</h2>
+            <h2>{authMode === 'signin' ? 'Welcome to your research room' : 'Create your account'}</h2>
             <p>
-              Sign in to open your group's workspace or create one for your
-              proposal.
+              {authMode === 'signin'
+                ? "Sign in to open your group's workspace or create one for your proposal."
+                : 'Register with your email to join your group or start a workspace for your proposal.'}
             </p>
             <form className="auth-form" onSubmit={e => { e.preventDefault(); void (authMode === 'signin' ? signin() : signup()); }}>
               <label>
@@ -1325,8 +1328,8 @@ function App() {
                 {authMode === 'signin' ? 'New here? Create an account' : 'Already registered? Sign in'}
               </button>
             </form>
-            {err && <p className="error">{err}</p>}
-            {msg && <p className="muted">{msg}</p>}
+            {err && <p className="error" role="alert">{err}</p>}
+            {msg && <p className="muted" role="status">{msg}</p>}
             <small>
               Each member signs in separately. Your team’s names and content are
               entered by your team.

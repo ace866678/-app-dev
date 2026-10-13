@@ -84,9 +84,45 @@ function legacySession(user: User | null): any {
   return user ? { user: legacyUser(user), access_token: '', token_type: 'bearer' } : null;
 }
 
+const friendlyAuthMessages: Record<string, string> = {
+  'auth/invalid-credential': 'Incorrect email or password. Please try again.',
+  'auth/wrong-password': 'Incorrect email or password. Please try again.',
+  'auth/user-not-found': 'No account found for that email. Use "Create an account" to register.',
+  'auth/invalid-email': 'Enter a valid email address.',
+  'auth/missing-password': 'Enter your password.',
+  'auth/email-already-in-use': 'That email already has an account. Try signing in instead.',
+  'auth/weak-password': 'Use a password with at least 6 characters.',
+  'auth/too-many-requests': 'Too many attempts. Wait a few minutes, then try again.',
+  'auth/network-request-failed': 'Network problem. Check your connection and try again.',
+  'auth/popup-closed-by-user': 'The Google window was closed before sign-in finished.',
+  'auth/cancelled-popup-request': 'The Google window was closed before sign-in finished.',
+  'auth/popup-blocked': 'Your browser blocked the Google window. Allow pop-ups and try again.',
+  'auth/unauthorized-domain': 'This website address is not authorized for sign-in yet. Ask the project owner to add it in Firebase.',
+  'auth/user-disabled': 'This account has been disabled.',
+};
+
 function toError(error: unknown): LegacyError {
   const value = error as { message?: string; code?: string };
-  return { message: value?.message || 'Firebase request failed.', code: value?.code };
+  const friendly = value?.code ? friendlyAuthMessages[value.code] : undefined;
+  return { message: friendly || value?.message || 'Firebase request failed.', code: value?.code };
+}
+
+/** Resolve with the promise result, or reject after `ms` so the UI never hangs. */
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      value => { clearTimeout(timer); resolve(value); },
+      error => { clearTimeout(timer); reject(error); },
+    );
+  });
+}
+
+/** Profile documents are a convenience; never let a slow write block sign-in. */
+function syncProfilesInBackground(user: User, displayName?: string, photoURL?: string): void {
+  void saveAuthProfiles(user, displayName, photoURL).catch(error => {
+    console.warn('Could not sync the Firebase profile documents:', toError(error).message);
+  });
 }
 
 function result<T>(data: T): LegacyResult<T> {
@@ -146,7 +182,7 @@ const authApi = {
 
       // Google sign-in on mobile returns through a redirect. Make sure its
       // private/public profile documents exist before the app loads workspace data.
-      void saveAuthProfiles(user)
+      void withTimeout(saveAuthProfiles(user), 3000, 'Profile sync is taking longer than expected.')
         .catch(error => {
           console.warn('Could not sync the Firebase profile documents:', toError(error).message);
         })
@@ -157,8 +193,12 @@ const authApi = {
 
   async signInWithPassword(input: { email: string; password: string }): Promise<LegacyResult<any>> {
     try {
-      const credential = await signInWithEmailAndPassword(requireAuth(), input.email.trim(), input.password);
-      await saveAuthProfiles(credential.user);
+      const credential = await withTimeout(
+        signInWithEmailAndPassword(requireAuth(), input.email.trim(), input.password),
+        20000,
+        'Sign-in is taking too long. Check your connection and try again.',
+      );
+      syncProfilesInBackground(credential.user);
       return result({ user: legacyUser(credential.user), session: legacySession(credential.user) });
     } catch (error) {
       return failed(error);
@@ -175,7 +215,7 @@ const authApi = {
         return result({ provider: 'google', url: null });
       }
       const credential = await signInWithPopup(currentAuth, provider);
-      await saveAuthProfiles(credential.user);
+      syncProfilesInBackground(credential.user);
       return result({ provider: 'google', user: legacyUser(credential.user), url: null });
     } catch (error) {
       return failed(error);
@@ -184,10 +224,14 @@ const authApi = {
 
   async signUp(input: { email: string; password: string; options?: { data?: Record<string, any> } }): Promise<LegacyResult<any>> {
     try {
-      const credential = await createUserWithEmailAndPassword(requireAuth(), input.email.trim(), input.password);
+      const credential = await withTimeout(
+        createUserWithEmailAndPassword(requireAuth(), input.email.trim(), input.password),
+        20000,
+        'Account creation is taking too long. Check your connection and try again.',
+      );
       const suggestedName = String(input.options?.data?.name || input.email.split('@')[0]).trim();
       await updateProfile(credential.user, { displayName: suggestedName });
-      await saveAuthProfiles(credential.user, suggestedName, credential.user.photoURL || '');
+      syncProfilesInBackground(credential.user, suggestedName, credential.user.photoURL || '');
       return result({ user: legacyUser(credential.user), session: legacySession(credential.user) });
     } catch (error) {
       return failed(error);
